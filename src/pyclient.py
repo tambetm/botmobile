@@ -7,10 +7,12 @@ Created on Apr 4, 2012
 import sys
 import argparse
 import socket
-import driver
+import keydriver
+import origdriver
+import wheeldriver
 
-if __name__ == '__main__':
-    pass
+#if __name__ == '__main__':
+#    pass
 
 # Configure the argument parser
 parser = argparse.ArgumentParser(description = 'Python client to connect to the TORCS SCRC server.')
@@ -30,7 +32,13 @@ parser.add_argument('--track', action='store', dest='track', default=None,
 parser.add_argument('--stage', action='store', dest='stage', type=int, default=3,
                     help='Stage (0 - Warm-Up, 1 - Qualifying, 2 - Race, 3 - Unknown)')
 
+# name of the driver to use 
+# driver built in, manual control by keyboard
+parser.add_argument('--driver', action='store', dest='driver', type=str, default='orig')
 arguments = parser.parse_args()
+# possible drivers so far, key - keyboard driver, wheel wheel driver, original
+# original driver
+
 
 # Print summary
 print 'Connecting to server host ip:', arguments.host_ip, '@ port:', arguments.host_port
@@ -39,6 +47,7 @@ print 'Maximum episodes:', arguments.max_episodes
 print 'Maximum steps:', arguments.max_steps
 print 'Track:', arguments.track
 print 'Stage:', arguments.stage
+print 'driver:', arguments.driver
 print '*********************************************'
 
 try:
@@ -55,7 +64,12 @@ curEpisode = 0
 
 verbose = False
 
-d = driver.Driver(arguments.stage)
+if arguments.driver == 'key':
+    d = keydriver.KeyDriver(arguments.stage)
+elif arguments.driver == 'wheel':
+    d = wheeldriver.WheelDriver(arguments.stage)
+elif arguments.driver == 'orig':
+    d = origdriver.OrigDriver(arguments.stage)
 
 while not shutdownClient:
     while True:
@@ -102,6 +116,12 @@ while not shutdownClient:
             print 'Client Restart'
             break
         
+        if arguments.driver =='key':  #driving by keyboard
+            #c = stdscr.getch()
+            #d.set_last_key(c)
+            # TODO read keys using pygame
+            pass 
+            
         currentStep += 1
         if currentStep != arguments.max_steps:
             if buf != None:

@@ -7,9 +7,8 @@ Created on Apr 4, 2012
 import msgParser
 import carState
 import carControl
-import pygame
 
-class Driver(object):
+class OrigDriver(object):
     '''
     A driver object for the SCRC
     '''
@@ -31,16 +30,7 @@ class Driver(object):
         self.steer_lock = 0.785398
         self.max_speed = 100
         self.prev_rpm = None
-
-        # Initialize the joysticks
-        pygame.init()
-        pygame.joystick.init()
-        assert pygame.joystick.get_count() > 0
-
-        self.joystick = pygame.joystick.Joystick(0)
-        self.joystick.init()
-        print "Using joystick", self.joystick.get_name()
-
+    
     def init(self):
         '''Return init string with rangefinder angles'''
         self.angles = [0 for x in range(19)]
@@ -57,22 +47,57 @@ class Driver(object):
     
     def drive(self, msg):
         self.state.setFromMsg(msg)
-
-        pygame.event.pump()
         
-        assert self.joystick.get_numaxes() == 3
-
-        wheelpos = self.joystick.get_axis(0)
-        self.control.setSteer(-wheelpos)
-
-        accel = self.joystick.get_axis(1)
-        self.control.setAccel(-(accel-1)/2)           
-
-        brake = self.joystick.get_axis(2)
-        self.control.setBrake(-(brake-1)/2)           
+        self.steer()
+        
+        self.gear()
+        
+        self.speed()
         
         return self.control.toMsg()
+    
+    def steer(self):
+        angle = self.state.angle
+        dist = self.state.trackPos
+        
+        self.control.setSteer((angle - dist*0.5)/self.steer_lock)
+    
+    def gear(self):
+        rpm = self.state.getRpm()
+        gear = self.state.getGear()
+        
+        if self.prev_rpm == None:
+            up = True
+        else:
+            if (self.prev_rpm - rpm) < 0:
+                up = True
+            else:
+                up = False
+        
+        if up and rpm > 7000:
+            gear += 1
+        
+        if not up and rpm < 3000:
+            gear -= 1
+        
+        self.control.setGear(gear)
+    
+    def speed(self):
+        speed = self.state.getSpeedX()
+        accel = self.control.getAccel()
+        
+        if speed < self.max_speed:
+            accel += 0.1
+            if accel > 1:
+                accel = 1.0
+        else:
+            accel -= 0.1
+            if accel < 0:
+                accel = 0.0
+        
+        self.control.setAccel(accel)
             
+        
     def onShutDown(self):
         pass
     
