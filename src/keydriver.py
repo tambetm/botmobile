@@ -5,6 +5,8 @@ manual drivering by keyboard, keeping in a separate file
 import msgParser
 import carState
 import carControl
+import pygame
+from pygame.locals import *
 
 class KeyDriver(object):
     '''
@@ -31,6 +33,9 @@ class KeyDriver(object):
     
     def init(self):
         '''Return init string with rangefinder angles'''
+        
+        pygame.init() # needed for keyboard input
+        pygame.display.set_mode([200, 200])
         self.angles = [0 for x in range(19)]
         
         for i in range(5):
@@ -43,17 +48,32 @@ class KeyDriver(object):
         
         return self.parser.stringify({'init': self.angles})
     
-    def set_last_key(c):
-        print c
     
     def drive(self, msg):
         self.state.setFromMsg(msg)
+        pygame.event.pump()
         
-        self.steer()
+        events = pygame.event.get()
         
-        self.gear()
-        
-        self.speed()
+        st_fl = False
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            st_fl = True
+            self.control.setSteer(0.5)
+        if keys[pygame.K_RIGHT]:
+            st_fl = True
+            self.control.setSteer(-0.5)
+        a_addup = 0.2
+        if keys[pygame.K_UP]:
+            self.control.setAccel(self.control.getAccel() + a_addup)
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_DOWN:
+                    self.control.setAccel(0)
+
+        if not st_fl:
+            self.control.setSteer(0)
+
         
         return self.control.toMsg()
     

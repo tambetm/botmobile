@@ -119,9 +119,9 @@ while not shutdownClient:
         if arguments.driver =='key':  #driving by keyboard
             #c = stdscr.getch()
             #d.set_last_key(c)
-            # TODO read keys using pygame
-            pass 
-            
+            # TODO read keys using pygame, might be needed
+            pass
+        
         currentStep += 1
         if currentStep != arguments.max_steps:
             if buf != None:
