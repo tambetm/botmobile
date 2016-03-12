@@ -37,7 +37,7 @@ class KeyDriver(object):
         
         pygame.init() # needed for keyboard input
         screen = pygame.display.set_mode([500, 700])
-        self.stats = sensorstats.Stats(screen)
+        self.stats = sensorstats.Stats(screen, inevery=8)
         # need to reposition right down
         self.angles = [0 for x in range(19)]
         
