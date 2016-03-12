@@ -7,10 +7,6 @@ Created on Apr 4, 2012
 import sys
 import argparse
 import socket
-import keydriver
-import origdriver
-import wheeldriver
-import ffdriver
 
 #if __name__ == '__main__':
 #    pass
@@ -66,12 +62,16 @@ curEpisode = 0
 verbose = False
 
 if arguments.driver == 'key':
+    import keydriver
     d = keydriver.KeyDriver(arguments.stage)
 elif arguments.driver == 'wheel':
+    import wheeldriver
     d = wheeldriver.WheelDriver(arguments.stage)
 elif arguments.driver == 'ff':
+    import ffdriver
     d = ffdriver.ForceFeedbackDriver(arguments.stage)
 elif arguments.driver == 'orig':
+    import origdriver
     d = origdriver.OrigDriver(arguments.stage)
 else:
     assert False, "Unknown driver"
