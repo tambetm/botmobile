@@ -7,7 +7,7 @@ Created on Apr 4, 2012
 import msgParser
 import carState
 import carControl
-import sdl2
+import sdl2, sdl2.ext
 import sensorstats
 
 class ForceFeedbackDriver(object):
@@ -50,7 +50,7 @@ class ForceFeedbackDriver(object):
         self.effect_id = sdl2.SDL_HapticNewEffect(self.haptic, efx)
         sdl2.SDL_HapticRunEffect(self.haptic, self.effect_id, 1);        
 
-        sdl2.SDL_HapticSetAutocenter(self.haptic, 25)
+        sdl2.SDL_HapticSetAutocenter(self.haptic, 0)
         sdl2.SDL_HapticSetGain(self.haptic, 100)
 
         self.stats = sensorstats.Stats(inevery=8)
@@ -74,11 +74,33 @@ class ForceFeedbackDriver(object):
 
         self.stats.update(self.state)
 
-        self.steer()
+        # manual override
+        steer = True
+        speed = True
+        '''
+        events = sdl2.ext.get_events()
+        for event in events:
+            if event.type == sdl2.SDL_JOYAXISMOTION:
+                print event.jaxis.which, event.jaxis.axis, event.jaxis.value
+                if event.jaxis.axis == 0:
+                    self.control.setSteer(-event.jaxis.value/32767)
+                    steer = False
+                elif event.jaxis.axis == 1:
+                    self.control.setAccel(-(event.jaxis.value/32767-1)/2)
+                    speed = False
+                elif event.jaxis.axis == 2:
+                    self.control.setBrake(-(event.jaxis.value/32767-1)/2)
+                else:
+                    print "EVENT:", event.type
+        '''
+        
+        if steer:
+            self.steer()
         
         self.gear()
         
-        self.speed()
+        if speed:
+            self.speed()
         
         return self.control.toMsg()
 
@@ -88,20 +110,30 @@ class ForceFeedbackDriver(object):
         
         steer = (angle - dist*0.5)/self.steer_lock
         self.control.setSteer(steer)
-        self.generate_force(steer)
-
+        
+        sdl2.SDL_PumpEvents()
+        wheel = sdl2.SDL_JoystickGetAxis(self.joystick, 0)
+        wheel = -wheel/32767.0
+        
+        #print steer, wheel, steer-wheel
+        
+        self.generate_force(steer-wheel)
+        
     def generate_force(self, force):
-        if force > 0.001:
+        if force > 0.005:
+            force = min(1, force)
             print "left", force
             dir = -1
-            maxlevel = 0x7000
-            minlevel = 0x2000
+            maxlevel = 0x7fff
+            minlevel = 0x1000
             level = minlevel + int((maxlevel - minlevel) * force)
-        elif force < -0.001:
+        elif force < -0.005:
+            force = -force
+            force = min(1, force)
             print "right", force
             dir = 1
             maxlevel = 0x7fff
-            minlevel = 0x4000
+            minlevel = 0x1000
             level = minlevel + int((maxlevel - minlevel) * force)
         else:
             print "center"
