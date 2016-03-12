@@ -10,6 +10,7 @@ import socket
 import keydriver
 import origdriver
 import wheeldriver
+import ffdriver
 
 #if __name__ == '__main__':
 #    pass
@@ -34,7 +35,7 @@ parser.add_argument('--stage', action='store', dest='stage', type=int, default=3
 
 # name of the driver to use 
 # driver built in, manual control by keyboard
-parser.add_argument('--driver', action='store', dest='driver', type=str, default='orig')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff'], default='orig')
 arguments = parser.parse_args()
 # possible drivers so far, key - keyboard driver, wheel wheel driver, original
 # original driver
@@ -68,8 +69,12 @@ if arguments.driver == 'key':
     d = keydriver.KeyDriver(arguments.stage)
 elif arguments.driver == 'wheel':
     d = wheeldriver.WheelDriver(arguments.stage)
+elif arguments.driver == 'ff':
+    d = ffdriver.ForceFeedbackDriver(arguments.stage)
 elif arguments.driver == 'orig':
     d = origdriver.OrigDriver(arguments.stage)
+else:
+    assert False, "Unknown driver"
 
 while not shutdownClient:
     while True:
