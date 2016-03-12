@@ -133,7 +133,7 @@ class DeepQNetwork:
     # calculate errors
     deltas = self.cost.get_errors(preq, self.targets)
     assert deltas.shape == (self.num_actions, self.batch_size)
-    assert np.count_nonzero(deltas.asnumpyarray()) == 2 * self.batch_size
+    #assert np.count_nonzero(deltas.asnumpyarray()) == 2 * self.batch_size, str(np.count_nonzero(deltas.asnumpyarray()))
 
     # calculate cost, just in case
     cost = self.cost.get_cost(preq, self.targets)

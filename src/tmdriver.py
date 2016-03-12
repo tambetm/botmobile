@@ -9,6 +9,10 @@ import carState
 import carControl
 import numpy as np
 import random
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import sensorstats
 
 class Driver(object):
     '''
@@ -45,6 +49,25 @@ class Driver(object):
         self.episode = 0
         self.onRestart()
         
+        self.show_sensors = args.show_sensors
+        self.show_qvalues = args.show_qvalues
+
+        if self.show_sensors:
+            self.stats = sensorstats.Stats(inevery=8)
+        
+        if self.show_qvalues:
+            matplotlib.use('TkAgg')
+            self.steer_plot = plt.subplot(2,1,1)
+            self.steer_plot.set_title("Steering")
+            self.steer_plot.set_xlim([22, 1])
+            self.speed_plot = plt.subplot(2,1,2)
+            self.speed_plot.set_title("Speed")
+            self.speed_plot.set_xlim([1, 6])
+            self.speed_plot.set_ylim([-10,10])
+            self.steer_rects = self.steer_plot.bar(np.arange(21)+1, [0]*21)
+            self.speed_rects = self.speed_plot.bar(np.arange(5)+1, [0]*5)
+            plt.show(block=False)
+        
     def init(self):
         '''Return init string with rangefinder angles'''
         self.angles = [0 for x in range(19)]
@@ -69,9 +92,6 @@ class Driver(object):
             reward += max(0, dist - self.prev_dist) * 100
             assert reward >= 0, "reward: %f" % reward
         self.prev_dist = dist
-
-        #reward = self.state.getDistFromStart()
-        #reward -= abs(self.state.getTrackPos()) * 100
         
         return reward
  
@@ -84,6 +104,9 @@ class Driver(object):
  
     def drive(self, msg):
         self.state.setFromMsg(msg)
+        
+        if self.show_sensors:
+            self.stats.update(self.state)
         
         state = self.getState()
         reward = self.getReward()
@@ -113,6 +136,8 @@ class Driver(object):
             assert Q.shape == (self.minibatch_size, 26), "Q.shape: %s" % str(Q.shape)
             steer = np.argmax(Q[0, :21])
             speed = np.argmax(Q[0, -5:])
+            if self.show_qvalues and self.total_train_steps % 100 == 0:
+                self.plotQ(Q[0])
 
         #print "steer:", steer, "speed:", speed
 
@@ -143,6 +168,20 @@ class Driver(object):
             #print "total_train_steps:", self.total_train_steps
 
         return self.control.toMsg()
+
+    def plotQ(self, Q):
+        #print "Steer:",
+        for rect, q in zip(self.steer_rects, Q[:21]):
+            #print q, " ",
+            rect.set_height(q)
+        self.steer_plot.set_ylim([min(Q[:21]),max(Q[:21])])
+        #print ""
+        #print "Speed",
+        for rect, q in zip(self.speed_rects, Q[-5:]):
+            #print q, " ",
+            rect.set_height(q)
+        self.speed_plot.set_ylim([min(Q[-5:]),max(Q[-5:])])
+        plt.draw()
     
     def gear(self):
         rpm = self.state.getRpm()

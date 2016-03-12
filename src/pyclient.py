@@ -33,6 +33,8 @@ antarg = parser.add_argument_group('Agent')
 antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
 antarg.add_argument("--exploration_decay_steps", type=float, default=10000, help="How many steps to decay the exploration rate.")
+antarg.add_argument("--show_qvalues", action="store_true", help="Show Q-values.")
+antarg.add_argument("--show_sensors", action="store_true", help="Show sensors.")
 
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=100000, help="Maximum size of replay memory.")
