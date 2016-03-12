@@ -7,6 +7,7 @@ import carState
 import carControl
 import pygame
 from pygame.locals import *
+import sensorstats
 
 class KeyDriver(object):
     '''
@@ -35,7 +36,9 @@ class KeyDriver(object):
         '''Return init string with rangefinder angles'''
         
         pygame.init() # needed for keyboard input
-        pygame.display.set_mode([200, 200])
+        screen = pygame.display.set_mode([500, 700])
+        self.stats = sensorstats.Stats(screen)
+        # need to reposition right down
         self.angles = [0 for x in range(19)]
         
         for i in range(5):
@@ -51,8 +54,9 @@ class KeyDriver(object):
     
     def drive(self, msg):
         self.state.setFromMsg(msg)
+        self.stats.update(self.state)
         pygame.event.pump()
-        
+         
         events = pygame.event.get()
         
         st_fl = False
