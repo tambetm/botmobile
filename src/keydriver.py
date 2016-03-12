@@ -37,15 +37,8 @@ class KeyDriver(object):
         
         self.stats = sensorstats.Stats(inevery=8)
         # need to reposition right down
-        self.angles = [0 for x in range(19)]
-        
-        for i in range(5):
-            self.angles[i] = -90 + i * 15
-            self.angles[18 - i] = 90 - i * 15
-        
-        for i in range(5, 9):
-            self.angles[i] = -20 + (i-5) * 5
-            self.angles[18 - i] = 20 - (i-5) * 5
+        self.angles = [-90 + x * 10 for x in range(19)]
+        print self.angles 
         
         return self.parser.stringify({'init': self.angles})
     

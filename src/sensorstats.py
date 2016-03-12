@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 # Define some colors
 BLACK    = (   0,   0,   0)
@@ -29,6 +30,7 @@ class TextPrint:
     def unindent(self):
         self.x -= 10
 
+
 class Stats():
     def __init__(self, inevery):
         """ updates screen only in inevery step"""
@@ -37,13 +39,16 @@ class Stats():
         self.textPrint=TextPrint(self.screen)
         self.inevery = 10
         self.curstep = -1
+        self.trcenter =(300, 600) # center for drawing track lines
 
-    def update(self, state):
-        self.curstep = (self.curstep + 1) % self.inevery
-        if not self.curstep == 0:
-            return
-        self.screen.fill(WHITE)
-        self.textPrint.reset()
+    def draw_tracks(self, track):
+        for i, sens in enumerate(track):
+            alpha = math.radians(-180 + i * 10)
+            x = self.trcenter[0] + math.cos(alpha) * (sens  + 20) * 2
+            y = self.trcenter[1] + math.sin(alpha) * (sens + 20) * 2
+            pygame.draw.line(self.screen, (255, 0, 0), self.trcenter, (x,y), 2)
+    
+    def draw_texts(self, state):
         # angle
         self.textPrint.text('angle: {}'.format(state.angle))
         self.textPrint.text('curLapTime{}:'.format(state.curLapTime))
@@ -66,7 +71,14 @@ class Stats():
             sens_txt = str(-90 + i * 10) + ': ' + str(sens)
             self.textPrint.text(sens_txt)
 
+    def update(self, state):
+        self.curstep = (self.curstep + 1) % self.inevery
+        if not self.curstep == 0:
+            return
+        self.screen.fill(WHITE)
+        self.textPrint.reset()
+        self.draw_texts(state)  
+        self.draw_tracks(state.track)
         pygame.display.flip()
-        
         
 
