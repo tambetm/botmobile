@@ -8,6 +8,7 @@ import carControl
 import pygame
 from pygame.locals import *
 import sensorstats
+from tools import CSVLogger
 
 class KeyDriver(object):
     '''
@@ -31,6 +32,7 @@ class KeyDriver(object):
         self.steer_lock = 0.785398
         self.max_speed = 100
         self.prev_rpm = None
+        self.csv_logger = CSVLogger('states.csv')
     
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -46,6 +48,7 @@ class KeyDriver(object):
     def drive(self, msg):
         self.state.setFromMsg(msg)
         self.stats.update(self.state)
+        self.csv_logger.log(self.state)
         pygame.event.pump()
          
         events = pygame.event.get()
