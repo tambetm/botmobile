@@ -8,7 +8,7 @@ import msgParser
 import carState
 import carControl
 import sdl2
-import time
+import sensorstats
 
 class ForceFeedbackDriver(object):
     '''
@@ -41,19 +41,19 @@ class ForceFeedbackDriver(object):
         self.haptic = sdl2.SDL_HapticOpen(0);
         assert sdl2.SDL_JoystickNumAxes(self.joystick) == 3
         assert sdl2.SDL_HapticQuery(self.haptic) & sdl2.SDL_HAPTIC_CONSTANT
-        
+
+        # Initialize force feedback
         efx = sdl2.SDL_HapticEffect(type=sdl2.SDL_HAPTIC_CONSTANT, constant= \
             sdl2.SDL_HapticConstant(type=sdl2.SDL_HAPTIC_CONSTANT, direction= \
-                                    sdl2.SDL_HapticDirection(type=sdl2.SDL_HAPTIC_CARTESIAN, dir=(1,0,0)), \
-            length=100, level=0x4000, attack_length=0, fade_length=0))
-        self.left = sdl2.SDL_HapticNewEffect(self.haptic, efx)
+                                    sdl2.SDL_HapticDirection(type=sdl2.SDL_HAPTIC_CARTESIAN, dir=(0,0,0)), \
+            length=sdl2.SDL_HAPTIC_INFINITY, level=0, attack_length=0, fade_length=0))
+        self.effect_id = sdl2.SDL_HapticNewEffect(self.haptic, efx)
+        sdl2.SDL_HapticRunEffect(self.haptic, self.effect_id, 1);        
 
+        sdl2.SDL_HapticSetAutocenter(self.haptic, 25)
+        sdl2.SDL_HapticSetGain(self.haptic, 100)
 
-        efx = sdl2.SDL_HapticEffect(type=sdl2.SDL_HAPTIC_CONSTANT, constant= \
-            sdl2.SDL_HapticConstant(type=sdl2.SDL_HAPTIC_CONSTANT, direction= \
-                                    sdl2.SDL_HapticDirection(type=sdl2.SDL_HAPTIC_CARTESIAN, dir=(-1,0,0)), \
-            length=100, level=0x4000, attack_length=0, fade_length=0))
-        self.right = sdl2.SDL_HapticNewEffect(self.haptic, efx)
+        self.stats = sensorstats.Stats(inevery=8)
 
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -72,47 +72,83 @@ class ForceFeedbackDriver(object):
     def drive(self, msg):
         self.state.setFromMsg(msg)
 
-        sdl2.SDL_PumpEvents()
+        self.stats.update(self.state)
 
-        wheel = sdl2.SDL_JoystickGetAxis(self.joystick, 0)
-        wheel = min(1, max(-1, -wheel/32767.0))
-
-        accel = sdl2.SDL_JoystickGetAxis(self.joystick, 1)
-        accel = min(1, max(0, -(accel/32767.0-1)/2))
-        if accel == 0:
-            speed = self.state.getSpeedX()
-            accel = self.control.getAccel()
-            
-            if speed < self.max_speed:
-                accel += 0.1
-                if accel > 1:
-                    accel = 1.0
-            else:
-                accel -= 0.1
-                if accel < 0:
-                    accel = 0.0
-        self.control.setAccel(accel)
-
-        brake = sdl2.SDL_JoystickGetAxis(self.joystick, 2)
-        brake = min(1, max(0, -(brake/32767.0-1)/2))
-        self.control.setBrake(brake)           
-
-        angle = self.state.angle
-        dist = self.state.trackPos
-        steer = (angle - dist*0.5)/self.steer_lock
-        print "steer", steer, "wheel", wheel
-        #if wheel < steer - 0.1:
-        #    sdl2.SDL_HapticRunEffect(self.haptic, self.left, 1);
-        #if wheel > steer + 0.1:
-        #    sdl2.SDL_HapticRunEffect(self.haptic, self.right, 1);
-
-        #print wheel, accel, brake
-        self.control.setSteer(steer)
+        self.steer()
         
-        #time.sleep(0.1)
+        self.gear()
+        
+        self.speed()
         
         return self.control.toMsg()
-            
+
+    def steer(self):
+        angle = self.state.angle
+        dist = self.state.trackPos
+        
+        steer = (angle - dist*0.5)/self.steer_lock
+        self.control.setSteer(steer)
+        self.generate_force(steer)
+
+    def generate_force(self, force):
+        if force > 0.001:
+            print "left", force
+            dir = -1
+            maxlevel = 0x7000
+            minlevel = 0x2000
+            level = minlevel + int((maxlevel - minlevel) * force)
+        elif force < -0.001:
+            print "right", force
+            dir = 1
+            maxlevel = 0x7fff
+            minlevel = 0x4000
+            level = minlevel + int((maxlevel - minlevel) * force)
+        else:
+            print "center"
+            dir = 0
+            level = 0
+
+        efx = sdl2.SDL_HapticEffect(type=sdl2.SDL_HAPTIC_CONSTANT, constant= \
+            sdl2.SDL_HapticConstant(type=sdl2.SDL_HAPTIC_CONSTANT, direction= \
+                                    sdl2.SDL_HapticDirection(type=sdl2.SDL_HAPTIC_CARTESIAN, dir=(dir,0,0)), \
+            length=sdl2.SDL_HAPTIC_INFINITY, level=level, attack_length=0, fade_length=0))
+        sdl2.SDL_HapticUpdateEffect(self.haptic, self.effect_id, efx)
+    
+    def gear(self):
+        rpm = self.state.getRpm()
+        gear = self.state.getGear()
+        
+        if self.prev_rpm == None:
+            up = True
+        else:
+            if (self.prev_rpm - rpm) < 0:
+                up = True
+            else:
+                up = False
+        
+        if up and rpm > 7000:
+            gear += 1
+        
+        if not up and rpm < 3000:
+            gear -= 1
+        
+        self.control.setGear(gear)
+    
+    def speed(self):
+        speed = self.state.getSpeedX()
+        accel = self.control.getAccel()
+        
+        if speed < self.max_speed:
+            accel += 0.1
+            if accel > 1:
+                accel = 1.0
+        else:
+            accel -= 0.1
+            if accel < 0:
+                accel = 0.0
+        
+        self.control.setAccel(accel)
+
     def onShutDown(self):
         pass
     

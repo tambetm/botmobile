@@ -30,9 +30,10 @@ class TextPrint:
         self.x -= 10
 
 class Stats():
-    def __init__(self, screen, inevery):
+    def __init__(self, inevery):
         """ updates screen only in inevery step"""
-        self.screen = screen
+        pygame.init() # needed for keyboard input
+        self.screen = pygame.display.set_mode([500, 700])
         self.textPrint=TextPrint(self.screen)
         self.inevery = 10
         self.curstep = -1
@@ -44,7 +45,6 @@ class Stats():
         self.screen.fill(WHITE)
         self.textPrint.reset()
         # angle
-        self.textPrint.text(str(random.random()))
         self.textPrint.text('angle: {}'.format(state.angle))
         self.textPrint.text('curLapTime{}:'.format(state.curLapTime))
         self.textPrint.text('distFromStart: {}'.format(state.distFromStart))
@@ -56,6 +56,7 @@ class Stats():
         self.textPrint.text('speeds: X, Y, Z')
         self.textPrint.indent()
         self.textPrint.text('{}, {}, {}'.format(state.speedX, state.speedY, state.speedZ))
+        self.textPrint.unindent()
 
         self.textPrint.text('Trackpos: {}'.format(state.trackPos))
         # Tracks
