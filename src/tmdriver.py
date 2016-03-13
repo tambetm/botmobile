@@ -9,10 +9,7 @@ import carState
 import carControl
 import numpy as np
 import random
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-import sensorstats
+import sdl2, sdl2.ext
 
 class Driver(object):
     '''
@@ -51,12 +48,16 @@ class Driver(object):
         
         self.show_sensors = args.show_sensors
         self.show_qvalues = args.show_qvalues
+        self.manual_control = args.manual_control
 
         if self.show_sensors:
+            import sensorstats
             self.stats = sensorstats.Stats(inevery=8)
         
         if self.show_qvalues:
+            import matplotlib
             matplotlib.use('TkAgg')
+            import matplotlib.pyplot as plt
             self.steer_plot = plt.subplot(2,1,1)
             self.steer_plot.set_title("Steering")
             self.steer_plot.set_xlim([22, 1])
@@ -67,6 +68,13 @@ class Driver(object):
             self.steer_rects = self.steer_plot.bar(np.arange(21)+1, [0]*21)
             self.speed_rects = self.speed_plot.bar(np.arange(5)+1, [0]*5)
             plt.show(block=False)
+
+        if self.manual_control:
+            # Initialize the joysticks
+            sdl2.SDL_Init(sdl2.SDL_INIT_JOYSTICK | sdl2.SDL_INIT_HAPTIC)
+            assert sdl2.SDL_NumJoysticks() > 0
+            self.joystick = sdl2.SDL_JoystickOpen(0)
+            assert sdl2.SDL_JoystickNumAxes(self.joystick) == 3
         
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -128,7 +136,7 @@ class Driver(object):
         if random.random() < epsilon:
             #print "random move"
             steer = random.randrange(21)
-            speed = random.randrange(5)
+            speed = random.randint(3,4)
         else:
             Q = self.net.predict(state + np.zeros((self.minibatch_size, 1)))
             #print "steer Q: ", Q[0,:21]
@@ -142,11 +150,32 @@ class Driver(object):
         #print "steer:", steer, "speed:", speed
 
         directions = [-1.0, -0.8, -0.6, -0.5, -0.4, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]
+        accels = [-1.0, -0.5, 0.0, 0.5, 1.0]
+
+        if self.manual_control:
+            events = sdl2.ext.get_events()
+            for event in events:
+                if event.type == sdl2.SDL_JOYAXISMOTION:
+                    print event.jaxis.which, event.jaxis.axis, event.jaxis.value
+                    if event.jaxis.axis == 0:
+                        wheel = -event.jaxis.value/32767.0
+                        steer = np.argmin(np.abs(np.array(directions) - wheel))
+                        #print "wheel:", wheel, "steer:", steer
+                    elif event.jaxis.axis == 1:
+                        accel = -(event.jaxis.value/32767.0-1)/2
+                        speed = np.argmin(np.abs(np.array(accels) - accel))
+                        #print "accel:", accel, "speed:", speed
+                    elif event.jaxis.axis == 2:
+                        brake = -(event.jaxis.value/32767.0-1)/2
+                        speed = np.argmin(np.abs(np.array(accels) + brake))
+                        #print "brake:", brake, "speed:", speed
+                    else:
+                        print "EVENT:", event.type
+
         self.control.setSteer(directions[steer])
 
         self.gear()
  
-        accels = [-1.0, -0.5, 0.0, 0.5, 1.0]
         accel = accels[speed]
         if accel >= 0:
             #print "accel", accel

@@ -25,7 +25,7 @@ class ReplayMemory:
     self.steers[self.current] = steer
     self.speeds[self.current] = speed
     self.rewards[self.current] = reward
-    self.prestates[self.current] = poststate
+    self.poststates[self.current] = poststate
     self.terminals[self.current] = terminal
     self.count = max(self.count, self.current + 1)
     self.current = (self.current + 1) % self.size

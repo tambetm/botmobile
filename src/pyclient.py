@@ -20,8 +20,8 @@ parser.add_argument('--port', action='store', type=int, dest='host_port', defaul
                     help='Host port number (default: 3001)')
 parser.add_argument('--id', action='store', dest='id', default='SCR',
                     help='Bot ID (default: SCR)')
-parser.add_argument('--maxEpisodes', action='store', dest='max_episodes', type=int, default=1,
-                    help='Maximum number of learning episodes (default: 1)')
+parser.add_argument('--maxEpisodes', action='store', dest='max_episodes', type=int, default=100,
+                    help='Maximum number of learning episodes (default: 100)')
 parser.add_argument('--maxSteps', action='store', dest='max_steps', type=int, default=0,
                     help='Maximum number of steps (default: 0)')
 parser.add_argument('--track', action='store', dest='track', default=None,
@@ -32,12 +32,13 @@ parser.add_argument('--stage', action='store', dest='stage', type=int, default=3
 antarg = parser.add_argument_group('Agent')
 antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
-antarg.add_argument("--exploration_decay_steps", type=float, default=10000, help="How many steps to decay the exploration rate.")
+antarg.add_argument("--exploration_decay_steps", type=float, default=50000, help="How many steps to decay the exploration rate.")
 antarg.add_argument("--show_qvalues", action="store_true", help="Show Q-values.")
 antarg.add_argument("--show_sensors", action="store_true", help="Show sensors.")
+antarg.add_argument("--manual_control", action="store_true", help="Allow manual control.")
 
 memarg = parser.add_argument_group('Replay memory')
-memarg.add_argument("--replay_size", type=int, default=100000, help="Maximum size of replay memory.")
+memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
 
 netarg = parser.add_argument_group('Deep Q-learning network')
 netarg.add_argument("--learning_rate", type=float, default=0.00025, help="Learning rate.")
@@ -62,7 +63,7 @@ comarg.add_argument("--log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR",
 
 # name of the driver to use 
 # driver built in, manual control by keyboard
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'tm', 'random'], default='orig')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'tm', 'random'], default='tm')
 arguments = parser.parse_args()
 
 # Print summary
