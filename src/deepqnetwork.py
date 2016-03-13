@@ -26,7 +26,7 @@ class DeepQNetwork:
                  batch_size = args.batch_size,
                  rng_seed = args.random_seed,
                  device_id = args.device_id,
-                 default_dtype = np.dtype(args.datatype).type,
+                 datatype = np.dtype(args.datatype).type,
                  stochastic_round = args.stochastic_round)
 
     # prepare tensors once and reuse them
@@ -116,7 +116,8 @@ class DeepQNetwork:
     assert preq.shape == (self.num_actions, self.batch_size)
 
     # make copy of prestate Q-values as targets
-    targets = preq.asnumpyarray()
+    # HACK: copy() was needed to make it work on CPU
+    targets = preq.asnumpyarray().copy()
 
     # update Q-value targets for actions taken
     for i, (steer, speed) in enumerate(zip(steers, speeds)):
@@ -138,6 +139,7 @@ class DeepQNetwork:
     # calculate cost, just in case
     cost = self.cost.get_cost(preq, self.targets)
     assert cost.shape == (1,1)
+    #print "cost:", cost.asnumpyarray()
 
     # clip errors
     if self.clip_error:
@@ -148,6 +150,27 @@ class DeepQNetwork:
 
     # perform optimization
     self.optimizer.optimize(self.model.layers_to_optimize, epoch)
+
+    '''
+    if np.any(rewards < 0):
+        preqq = preq.asnumpyarray().copy()
+        self._setInput(prestates)
+        qvalues = self.model.fprop(self.input, inference = True).asnumpyarray().copy()
+        indexes = rewards < 0
+        print "indexes:", indexes
+        print "preq:", preqq[:, indexes].T
+        print "preq':", qvalues[:, indexes].T
+        print "diff:", (qvalues[:, indexes]-preqq[:, indexes]).T
+        print "steers:", steers[indexes]
+        print "speeds:", speeds[indexes]
+        print "rewards:", rewards[indexes]
+        print "terminals:", terminals[indexes]
+        print "preq[0]:", preqq[:, 0]
+        print "preq[0]':", qvalues[:, 0]
+        print "diff:", qvalues[:, 0] - preqq[:, 0]
+        print "deltas:", deltas.asnumpyarray()[:, indexes].T
+        raw_input("Press Enter to continue...")
+    '''
 
     # increase number of weight updates (needed for target clone interval)
     self.train_iterations += 1

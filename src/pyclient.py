@@ -35,7 +35,7 @@ antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exp
 antarg.add_argument("--exploration_decay_steps", type=float, default=50000, help="How many steps to decay the exploration rate.")
 antarg.add_argument("--show_qvalues", action="store_true", help="Show Q-values.")
 antarg.add_argument("--show_sensors", action="store_true", help="Show sensors.")
-antarg.add_argument("--manual_control", action="store_true", help="Allow manual control.")
+antarg.add_argument("--force_feedback", action="store_true", help="Use force feedback to show wheel moves.")
 
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
