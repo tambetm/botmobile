@@ -30,7 +30,7 @@ mainarg.add_argument('--track', action='store', dest='track', default=None, help
 mainarg.add_argument('--stage', action='store', dest='stage', type=int, default=3, help='Stage (0 - Warm-Up, 1 - Qualifying, 2 - Race, 3 - Unknown)')
 
 mainarg.add_argument("--load_weights", help="Load network from file.")
-mainarg.add_argument("--save_weights_prefix", help="Save network to given file. Epoch and extension will be appended.")
+mainarg.add_argument("--save_weights_prefix", default="default_save_location_", help="Save network to given file. Epoch and extension will be appended.")
 mainarg.add_argument("--csv_file", help="Write training progress to this file.")
 
 # Things we might need eventually
@@ -60,7 +60,7 @@ neonarg.add_argument('--stochastic_round', const=True, type=int, nargs='?', defa
 
 # Arguments related to the BotMobile
 botarg = parser.add_argument_group('Agent')
-botarg.add_argument("--exploration_rate_start", type=float, default=0.75, help="Exploration rate at the beginning of decay.")
+botarg.add_argument("--exploration_rate_start", type=float, default=1.0, help="Exploration rate at the beginning of decay.")
 botarg.add_argument("--exploration_rate_end", type=float, default=0.05, help="Exploration rate at the end of decay.")
 botarg.add_argument("--exploration_decay_steps", type=float, default=10000, help="After how many steps to decay the exploration rate.")
 botarg.add_argument("--exploration_rate_test", type=float, default=0.05, help="Exploration rate used during testing.")

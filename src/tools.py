@@ -33,7 +33,9 @@ class CSVLogger(object):
         #import ipdb; ipdb.set_trace()
         
         dct = self.to_csv_dict(state.__dict__)
-        
+        dct["acc"] = state.acc
+        dct["wheel"] = state.wheel
+        dct["brake"] = state.brake
         if self.nrow == 0:
             with open(self.fn, 'w') as f:
                 # write headers

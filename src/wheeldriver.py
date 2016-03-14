@@ -8,6 +8,7 @@ import msgParser
 import carState
 import carControl
 import pygame
+from tools import CSVLogger
 
 class WheelDriver(object):
     '''
@@ -31,7 +32,6 @@ class WheelDriver(object):
         self.steer_lock = 0.785398
         self.max_speed = 100
         self.prev_rpm = None
-
         # Initialize the joysticks
         pygame.init()
         pygame.joystick.init()
@@ -40,6 +40,8 @@ class WheelDriver(object):
         self.joystick = pygame.joystick.Joystick(0)
         self.joystick.init()
         print "Using joystick", self.joystick.get_name()
+        self.csv_logger = CSVLogger('states.csv')
+
 
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -59,19 +61,48 @@ class WheelDriver(object):
         self.state.setFromMsg(msg)
 
         pygame.event.pump()
-        
+
+
         assert self.joystick.get_numaxes() == 3
 
         wheelpos = self.joystick.get_axis(0)
         self.control.setSteer(-wheelpos)
 
         accel = self.joystick.get_axis(1)
-        self.control.setAccel(-(accel-1)/2)           
+        accel = -(accel-1)/4
+        self.control.setAccel(accel)
 
         brake = self.joystick.get_axis(2)
-        self.control.setBrake(-(brake-1)/2)           
-        
+        brake = -(brake-1)/4
+        self.control.setBrake(brake)
+        self.gear()
+        self.state.wheel = wheelpos
+        self.state.acc = accel
+        self.state.brake = brake
+        self.csv_logger.log(self.state)
+
         return self.control.toMsg()
+
+
+    def gear(self):
+        rpm = self.state.getRpm()
+        gear = self.state.getGear()
+
+        if self.prev_rpm == None:
+            up = True
+        else:
+            if (self.prev_rpm - rpm) < 0:
+                up = True
+            else:
+                up = False
+
+        if up and rpm > 7000:
+            gear += 1
+
+        if not up and rpm < 3000:
+            gear -= 1
+
+        self.control.setGear(gear)
             
     def onShutDown(self):
         pass

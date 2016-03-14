@@ -10,8 +10,9 @@ import carControl
 import random
 import logging
 import numpy as np
+import sensorstats
 logger = logging.getLogger(__name__)
-
+#import matplotlib.pyplot as plt
 
 class Driver(object):
     '''
@@ -44,11 +45,17 @@ class Driver(object):
         self.stat = 0
         self.desired_acc = 0.0
 
+        self.stats = sensorstats.Stats(inevery=8)
+
+        #self.f = plt.figure()
+        #self.ax = self.f.gca(projection='polar')
+        #self.f.show()
+
 
     def _exploration_rate(self):
         # calculate decaying exploration rate
-        if self.total_train_steps < self.exploration_decay_steps:
-            return self.exploration_rate_start - self.total_train_steps * (self.exploration_rate_start - self.exploration_rate_end) / self.exploration_decay_steps
+        if self.step_count < 100000:
+            return self.exploration_rate_start - (self.exploration_rate_start - self.exploration_rate_end)*self.step_count/100000
         else:
             return self.exploration_rate_end
 
@@ -77,7 +84,8 @@ class Driver(object):
         track_pos = self.state.getTrackPos()  # for defining negative reward
         distance = self.state.getDistRaced()  # for defining positive reward
         current_accel = self.control.getAccel()
-        current_state = np.array([angle, speedX, speedY, track_pos, current_accel]+track)
+        #current_state = np.array([angle, speedX, speedY, track_pos, current_accel]+track)
+        current_state = np.array([angle, speedX, speedY, track_pos, current_accel])
         return current_state
 
     def calculate_reward(self):
@@ -92,9 +100,14 @@ class Driver(object):
         angle_deviation = np.abs(self.state.angle)
         reward -= angle_deviation
 
+        reward += (self.state.distRaced -self.prev_distance)/0.1
+        self.prev_distance = self.state.distRaced
+
         return reward
 
     def step(self):
+        if self.step_count % 1000 ==0:
+                self.exploration_rate = self._exploration_rate()
         current_state = self.get_state_array()  # this gets us the state s
         reward = self.calculate_reward()
 
@@ -108,9 +121,12 @@ class Driver(object):
             acc_action = self.speed()
 
         else:
-            nnet_input = np.empty((32, 24))
+            nnet_input = np.empty((32, 5))
             nnet_input[0,:] = current_state
             q_vals = self.net.predict(nnet_input)[0]
+            print "\r", q_vals,
+            #self.ax.bar(np.array(directions)*0.366, q_vals, width=0.1)
+            #self.f.canvas.draw()
             steering_action = np.argmax(q_vals)
             #acc_action = np.argmax(q_vals)
             acc_action = self.speed()
@@ -119,11 +135,11 @@ class Driver(object):
         wheel = directions[steering_action]
         acc = [-1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0][acc_action]
 
-        #print "\r reward", reward,
+        print "\r reward", reward,
 
         self.mem.add(self.prev_action[0], self.prev_action[1], reward, current_state, 0)
         self.prev_action = [steering_action, acc_action]
-        if self.step_count > 10:
+        if self.step_count > 100:
             minibatch = self.mem.getMinibatch()
             self.net.train(minibatch, 0)
 
@@ -134,7 +150,7 @@ class Driver(object):
 
     def drive(self, msg):
         self.state.setFromMsg(msg) #just updates our knowledge about the state
-
+        self.stats.update(self.state)
         wheel, acc = self.step()
         #print wheel, acc
         self.control.setSteer(wheel)
@@ -147,9 +163,7 @@ class Driver(object):
 
         self.gear()
         #    self.stat -= 1
-        #print "\r", self.stat,
         action_msg = self.control.toMsg()  #this is the action we take now
-        #print "RETURNING ACTION MESSAGE", action_msg
         return action_msg
 
 
@@ -187,15 +201,15 @@ class Driver(object):
         dist = self.state.trackPos
 
         if dist > 0:
-            dist = np.min([dist*0.25, 1.0])
+            dist = np.min([dist*0.5, 1.0])
         if dist < 0:
-            dist = np.max([dist*0.25, -1.0])
+            dist = np.max([dist*0.5, -1.0])
         desired = (angle - dist)*0.5
 
         wheel_action = min(range(len(directions)), key=lambda x: np.abs(directions[x] - desired))
         #print "desired is: ", desired, "closest is:", directions[wheel_action]
         #self.control.setSteer((angle - dist*0.5)/0.8)
-        print angle, dist, desired, directions[wheel_action]
+        #print angle, dist, desired, directions[wheel_action]
         return wheel_action
 
     def speed(self):
@@ -205,25 +219,34 @@ class Driver(object):
         #print accel == self.control.getAccel()
 
         max_speed = 50
-        if self.step_count > 5000:
+        if self.step_count > 20000:
+            max_speed =75
+        if self.step_count > 40000:
             max_speed =100
-        if self.step_count > 10000:
+        if self.step_count > 60000:
+            max_speed =125
+        if self.step_count > 80000:
             max_speed =150
 
-        if np.max(self.state.track) < 100 and self.state.speedX >100:
-            accel = -0.1
+        if -1 in self.state.track:
+            max_speed = 30
+
+        if speed > np.max(self.state.track) and not np.abs(self.state.trackPos) > 1:
+            print "decreased speed, because too close to border"
+            accel += -0.1
 
         elif speed < max_speed:
             accel += 0.1
-            if accel > 1:
-                accel = 1.0
+            if accel > 0.5:
+                accel = 0.5
         else:
             accel -= 0.1
             if accel < 0:
                 accel = 0.0
 
         if np.abs(self.state.trackPos) > 1.1:
-            accel = np.min(accel, 0.2)
+            accel = 0.2
+
         possible_acc = [-1.0, -0.5, -0.1, 0.0, 0.1, 0.5, 1.0]
         acc_action = min(range(len(possible_acc)), key=lambda x: np.abs(possible_acc[x] - accel))
         #print "desired is: ", accel, "closest is:", possible_acc[acc_action]

@@ -11,9 +11,9 @@ class ReplayMemory:
     self.acc_actions = np.empty(self.size, dtype = np.uint8)
 
     self.rewards = np.empty(self.size, dtype = np.integer)
-    self.screens = np.empty((self.size, 24), dtype = np.uint8)
+    self.screens = np.empty((self.size, 5), dtype = np.uint8)
     self.terminals = np.empty(self.size, dtype = np.bool)
-    self.dims = 24
+    self.dims =5
     self.batch_size = args.batch_size
 
     self.count = 0

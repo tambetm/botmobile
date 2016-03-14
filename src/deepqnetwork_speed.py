@@ -13,8 +13,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DeepQNetwork:
-  def __init__(self, num_actions, args):
+  def __init__(self, state_size, num_actions, args):
     # remember parameters
+    self.state_size = state_size
     self.num_actions = num_actions
     self.batch_size = args.batch_size
     self.discount_rate = args.discount_rate
@@ -29,7 +30,7 @@ class DeepQNetwork:
                  stochastic_round = args.stochastic_round)
 
     # prepare tensors once and reuse them
-    self.input_shape = (24, self.batch_size)
+    self.input_shape = (self.state_size, self.batch_size)
     self.input = self.be.empty(self.input_shape)
     self.targets = self.be.empty((self.num_actions, self.batch_size))
 
@@ -61,27 +62,25 @@ class DeepQNetwork:
     else:
       self.target_model = self.model
 
-    self.callback = None
-
   def _createLayers(self, num_actions):
     # create network
     init_norm = Gaussian(loc=0.0, scale=0.01)
     layers = []
     # The final hidden layer is fully-connected and consists of 512 rectifier units.
-    layers.append(Affine(nout=128, init=init_norm, activation=Rectlin()))
+    layers.append(Affine(nout=16, init=init_norm, activation=Rectlin()))
     # The output layer is a fully-connected linear layer with a single output for each valid action.
     layers.append(Affine(nout=num_actions, init=init_norm))
     return layers
 
   def _setInput(self, states):
     # change order of axes to match what Neon expects
-    states = np.transpose(states, axes=(1, 0))
+    states = np.transpose(states)
     # copy() shouldn't be necessary here, but Neon doesn't work otherwise
     self.input.set(states.copy())
     # normalize network input between 0 and 1
-    self.be.divide(self.input, 255, self.input)
+    #self.be.divide(self.input, 255, self.input)
 
-  def train(self, minibatch, epoch):
+  def train(self, minibatch, epoch = 0):
     # expand components of minibatch
     prestates, actions, rewards, poststates, terminals = minibatch
     assert len(prestates.shape) == 2
@@ -105,7 +104,7 @@ class DeepQNetwork:
 
     # calculate max Q-value for each poststate
     maxpostq = self.be.max(postq, axis=0).asnumpyarray()
-    assert maxpostq.shape == (1, self.batch_size)
+    assert maxpostq.shape == (self.batch_size,)
 
     # feed-forward pass for prestates
     self._setInput(prestates)
@@ -120,7 +119,7 @@ class DeepQNetwork:
       if terminals[i]:
         targets[action, i] = float(rewards[i])
       else:
-        targets[action, i] = float(rewards[i]) + self.discount_rate * maxpostq[0,i]
+        targets[action, i] = float(rewards[i]) + self.discount_rate * maxpostq[i]
 
     # copy targets to GPU memory
     self.targets.set(targets)
@@ -147,13 +146,9 @@ class DeepQNetwork:
     # increase number of weight updates (needed for target clone interval)
     self.train_iterations += 1
 
-    # calculate statistics
-    if self.callback:
-      self.callback.on_train(cost.asnumpyarray()[0, 0])
-
   def predict(self, states):
     # minibatch is full size, because Neon doesn't let change the minibatch size
-    assert states.shape == (self.batch_size, 24)
+    assert states.shape == (self.batch_size, self.state_size)
 
     # calculate Q-values for the states
     self._setInput(states)
