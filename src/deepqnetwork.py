@@ -13,10 +13,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class DeepQNetwork:
-  def __init__(self, state_size, num_actions, args):
+  def __init__(self, state_size, num_steers, num_speeds, args):
     # remember parameters
     self.state_size = state_size
-    self.num_actions = num_actions
+    self.num_steers = num_steers
+    self.num_speeds = num_speeds
+    self.num_actions = num_steers + num_speeds
     self.batch_size = args.batch_size
     self.discount_rate = args.discount_rate
     self.clip_error = args.clip_error
@@ -35,7 +37,7 @@ class DeepQNetwork:
     self.targets = self.be.empty((self.num_actions, self.batch_size))
 
     # create model
-    layers = self._createLayers(num_actions)
+    layers = self._createLayers(self.num_actions)
     self.model = Model(layers = layers)
     self.cost = GeneralizedCost(costfunc = SumSquared())
     self.model.initialize(self.input_shape[:-1], self.cost)
@@ -56,7 +58,7 @@ class DeepQNetwork:
     self.target_steps = args.target_steps
     self.train_iterations = 0
     if self.target_steps:
-      self.target_model = Model(layers = self._createLayers(num_actions))
+      self.target_model = Model(layers = self._createLayers(self.num_actions))
       self.target_model.initialize(self.input_shape[:-1])
       self.save_weights_prefix = args.save_weights_prefix
     else:
@@ -67,7 +69,7 @@ class DeepQNetwork:
     init_norm = Gaussian(loc=0.0, scale=0.01)
     layers = []
     # The final hidden layer is fully-connected and consists of 512 rectifier units.
-    layers.append(Affine(nout=50, init=init_norm, activation=Rectlin()))
+    layers.append(Affine(nout=100, init=init_norm, activation=Rectlin()))
     # The output layer is a fully-connected linear layer with a single output for each valid action.
     layers.append(Affine(nout=num_actions, init = init_norm))
     return layers
@@ -105,9 +107,9 @@ class DeepQNetwork:
 
     # calculate max Q-value for each poststate
     postq = postq.asnumpyarray()
-    maxsteerq = np.max(postq[:21,:], axis=0)
+    maxsteerq = np.max(postq[:self.num_steers,:], axis=0)
     assert maxsteerq.shape == (self.batch_size,), "size: %s" % str(maxsteerq.shape)
-    maxspeedq = np.max(postq[-5:,:], axis=0)
+    maxspeedq = np.max(postq[-self.num_speeds:,:], axis=0)
     assert maxspeedq.shape == (self.batch_size,)
 
     # feed-forward pass for prestates
@@ -123,10 +125,10 @@ class DeepQNetwork:
     for i, (steer, speed) in enumerate(zip(steers, speeds)):
       if terminals[i]:
         targets[steer, i] = float(rewards[i])
-        targets[21 + speed, i] = float(rewards[i])
+        targets[self.num_steers + speed, i] = float(rewards[i])
       else:
         targets[steer, i] = float(rewards[i]) + self.discount_rate * maxsteerq[i]
-        targets[21 + speed, i] = float(rewards[i]) + self.discount_rate * maxspeedq[i]
+        targets[self.num_steers + speed, i] = float(rewards[i]) + self.discount_rate * maxspeedq[i]
 
     # copy targets to GPU memory
     self.targets.set(targets)

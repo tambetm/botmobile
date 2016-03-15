@@ -10,7 +10,7 @@ import carControl
 import sdl2, sdl2.ext
 import sensorstats
 
-class ForceFeedbackDriver(object):
+class Driver(object):
     '''
     A driver object for the SCRC
     '''

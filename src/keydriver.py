@@ -10,7 +10,7 @@ from pygame.locals import *
 import sensorstats
 from tools import CSVLogger
 
-class KeyDriver(object):
+class Driver(object):
     '''
     A driver object for the SCRC
     '''

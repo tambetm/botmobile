@@ -9,7 +9,7 @@ import carState
 import carControl
 import random
 
-class RandDriver(object):
+class Driver(object):
     '''
     A driver object for the SCRC
     '''
