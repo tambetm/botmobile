@@ -80,7 +80,7 @@ class DeepQNetwork:
     # copy() shouldn't be necessary here, but Neon doesn't work otherwise
     self.input.set(states.copy())
     # normalize network input between 0 and 1
-    self.be.divide(self.input, 200, self.input)
+    #self.be.divide(self.input, 200, self.input)
 
   def train(self, minibatch, epoch = 0):
     # expand components of minibatch

@@ -95,7 +95,11 @@ class Driver(object):
         return self.parser.stringify({'init': self.angles})
 
     def getState(self):
-        return np.array(self.state.getTrack())
+        #state = np.array([self.state.getSpeedX() / 200.0, self.state.getAngle(), self.state.getTrackPos()])
+        #state = np.array(self.state.getTrack() + [self.state.getSpeedX()]) / 200.0
+        state = np.array(self.state.getTrack()) / 200.0
+        assert state.shape == (self.num_inputs,)
+        return state
 
     def getReward(self, terminal):
         if terminal:
@@ -108,8 +112,14 @@ class Driver(object):
             else:
                 reward = 0
             self.prev_dist = dist
+            
+            #reward -= self.state.getTrackPos()
+            #print "reward:", reward
         
         return reward
+
+    def getTerminal(self):
+        return np.all(np.array(self.state.getTrack()) == -1)
 
     def getEpsilon(self):
         # calculate decaying exploration rate
@@ -128,7 +138,7 @@ class Driver(object):
         
         # fetch state, calculate reward and terminal indicator  
         state = self.getState()
-        terminal = np.all(state == -1)
+        terminal = self.getTerminal()
         reward = self.getReward(terminal)
         #print "reward:", reward
 

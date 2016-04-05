@@ -8,7 +8,7 @@ import msgParser
 import carState
 import carControl
 
-class OrigDriver(object):
+class Driver(object):
     '''
     A driver object for the SCRC
     '''

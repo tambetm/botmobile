@@ -1,0 +1,43 @@
+ Method
+ ======
+ 
+ 1. DQN (discrete action space)
+ 2. Policy gradient (continuous action space)
+ 3. Imitation learning (faster to converge?)
+ 
+ Features
+ ========
+ 
+ 1. continuous case - angle, dist, speed
+ 2. discrete case - 19 sensors, speed?
+ 
+ Rewards
+ =======
+ 
+ 1. Advancement on track - positive
+ 2. Going out of track - huge? negative
+ 3. Distance from center of track - negative?
+ 
+ Metric
+ ======
+
+ 1. distFromStart (when crashing or finishing race) - average, maximum, stddev
+ 2. curLapTime
+ 3. lastLapTime 
+ 
+ Plots
+ =====
+ 
+ 1. Where the car crashes
+ 2. Linear model coefficients
+ 
+ Misc
+ ====
+ 
+ 1. Text mode racing (restart crashes Torcs)
+ 2. Better keyboard control?
+    * Accelerate only when pushing the up button
+    * Automatic gear change
+    * Automatic reverse when pushing down button?
+ 3. Windows/Mac support.
+ 

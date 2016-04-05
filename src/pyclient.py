@@ -43,9 +43,9 @@ antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exp
 antarg.add_argument("--exploration_decay_steps", type=float, default=50000, help="How many steps to decay the exploration rate.")
 
 antarg.add_argument("--show_sensors", type=str2bool, default=False, help="Show sensors.")
-antarg.add_argument("--update_sensors_interval", type=int, default=8, help="Update sensor values after every x steps.")
+antarg.add_argument("--update_sensors_interval", type=int, default=1, help="Update sensor values after every x steps.")
 antarg.add_argument("--show_qvalues", type=str2bool, default=False, help="Show Q-values.")
-antarg.add_argument("--update_qvalues_interval", type=int, default=100, help="Update Q-values after every x steps.")
+antarg.add_argument("--update_qvalues_interval", type=int, default=1, help="Update Q-values after every x steps.")
 
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
@@ -72,7 +72,7 @@ comarg.add_argument("--random_seed", type=int, help="Random seed for repeatable 
 comarg.add_argument("--log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="Log level.")
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'tm', 'random'], default='tm')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear'], default='dqn')
 arguments = parser.parse_args()
 
 # Print summary
@@ -100,8 +100,11 @@ elif arguments.driver == 'ff':
 elif arguments.driver == 'random':
     from randomdriver import Driver
     driver = Driver(arguments.stage)
-elif arguments.driver == 'tm':
-    from tmdriver import Driver
+elif arguments.driver == 'dqn':
+    from dqndriver import Driver
+    driver = Driver(arguments)
+elif arguments.driver == 'linear':
+    from lineardriver import Driver
     driver = Driver(arguments)
 else:
     assert False, "Unknown driver"
