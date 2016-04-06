@@ -60,7 +60,8 @@ netarg.add_argument("--decay_rate", type=float, default=0.95, help="Decay rate f
 netarg.add_argument("--clip_error", type=float, default=0, help="Clip error term in update between this number and its negative.")
 netarg.add_argument("--target_steps", type=int, default=10000, help="Copy main network to target network after this many steps.")
 netarg.add_argument("--load_weights", help="Load network from file.")
-netarg.add_argument("--save_weights_prefix", default="test", help="Save network to given file. Epoch and extension will be appended.")
+netarg.add_argument("--save_weights_prefix", default="test", help="After each epoch save network to given file. Epoch and extension will be appended.")
+netarg.add_argument("--save_interval", type=int, default=100, help="Save weights after this many episodes.")
 
 neonarg = parser.add_argument_group('Neon')
 neonarg.add_argument('--backend', choices=['cpu', 'gpu'], default='gpu', help='backend type')
@@ -199,6 +200,7 @@ while not shutdownClient:
     curEpisode += 1
     
     if curEpisode == arguments.max_episodes:
+        driver.onShutDown()
         shutdownClient = True
         
 

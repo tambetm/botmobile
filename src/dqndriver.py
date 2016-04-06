@@ -44,6 +44,7 @@ class Driver(object):
         if args.load_weights:
             self.net.load_weights(args.load_weights)
         self.save_weights_prefix = args.save_weights_prefix
+        self.save_interval = args.save_interval
 
         self.enable_training = args.enable_training
         self.enable_exploration = args.enable_exploration
@@ -188,6 +189,26 @@ class Driver(object):
 
         return self.control.toMsg()
 
+    def gear(self):
+        rpm = self.state.getRpm()
+        gear = self.state.getGear()
+        
+        if self.prev_rpm == None:
+            up = True
+        else:
+            if (self.prev_rpm - rpm) < 0:
+                up = True
+            else:
+                up = False
+        
+        if up and rpm > 7000 and gear < 6:
+            gear += 1
+        
+        if not up and rpm < 3000 and gear > 0:
+            gear -= 1
+        
+        return gear
+        
     def setSteerAction(self, steer):
         assert 0 <= steer <= self.num_steers
         self.control.setSteer(self.steers[steer])
@@ -208,28 +229,9 @@ class Driver(object):
             self.control.setAccel(0)
             self.control.setBrake(-accel)
     
-    def gear(self):
-        rpm = self.state.getRpm()
-        gear = self.state.getGear()
-        
-        if self.prev_rpm == None:
-            up = True
-        else:
-            if (self.prev_rpm - rpm) < 0:
-                up = True
-            else:
-                up = False
-        
-        if up and rpm > 7000:
-            gear += 1
-        
-        if not up and rpm < 3000:
-            gear -= 1
-        
-        return gear
-        
     def onShutDown(self):
-        pass
+        if self.save_weights_prefix:
+            self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
     
     def onRestart(self):
     
@@ -239,7 +241,7 @@ class Driver(object):
         self.prev_steer = None
         self.prev_speed = None
 
-        if self.save_weights_prefix and self.episode > 0:
+        if self.save_weights_prefix and self.episode > 0 and self.episode % self.save_interval == 0:
             self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
 
         if self.episode > 0:
