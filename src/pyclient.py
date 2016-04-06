@@ -7,6 +7,7 @@ Created on Apr 4, 2012
 import sys
 import argparse
 import socket
+import time
 
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
@@ -35,8 +36,8 @@ antarg.add_argument("--max_force", type=int, default=0x7fff, help="Maximal force
 antarg.add_argument("--maxwheelsteps", type=int, default=50, help="How many steps wheel control persists after moving the wheel.")
 
 antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enable training, by default True.")
-antarg.add_argument("--enable_exploration", type=str2bool, default=False, help="Enable exploration, by default False.")
-antarg.add_argument("--pretrained_network", default="zura_test_55.pkl", help="Pretrained network to load when appropriate button is pressed.")
+antarg.add_argument("--enable_exploration", type=str2bool, default=True, help="Enable exploration, by default True.")
+antarg.add_argument("--pretrained_network", default="models/zura_test_55.pkl", help="Pretrained network to load when appropriate button is pressed.")
 
 antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
@@ -72,7 +73,7 @@ comarg.add_argument("--random_seed", type=int, help="Random seed for repeatable 
 comarg.add_argument("--log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="Log level.")
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear'], default='dqn')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo'], default='dqn')
 arguments = parser.parse_args()
 
 # Print summary
@@ -106,6 +107,9 @@ elif arguments.driver == 'dqn':
 elif arguments.driver == 'linear':
     from lineardriver import Driver
     driver = Driver(arguments)
+elif arguments.driver == 'demo':
+    from demodriver import Driver
+    driver = Driver(arguments)
 else:
     assert False, "Unknown driver"
 
@@ -125,9 +129,11 @@ verbose = False
 
 while not shutdownClient:
     while True:
-        print 'Sending id to server: ', arguments.id
+        if verbose:
+          print 'Sending id to server: ', arguments.id
         buf = arguments.id + driver.init()
-        print 'Sending init string to server:', buf
+        if verbose:
+          print 'Sending init string to server:', buf
         
         try:
             sock.sendto(buf, (arguments.host_ip, arguments.host_port))
@@ -142,7 +148,8 @@ while not shutdownClient:
             print "didn't get response from server... %s" % msg
     
         if buf.find('***identified***') >= 0:
-            print 'Received: ', buf
+            if verbose:
+                print 'Received: ', buf
             break
 
     currentStep = 0
@@ -161,12 +168,15 @@ while not shutdownClient:
         if buf != None and buf.find('***shutdown***') >= 0:
             driver.onShutDown()
             shutdownClient = True
-            print 'Client Shutdown'
+            if verbose:
+              print 'Client Shutdown'
             break
         
         if buf != None and buf.find('***restart***') >= 0:
             driver.onRestart()
-            print 'Client Restart'
+            if verbose:
+              print 'Client Restart'
+            time.sleep(1)
             break
         
         currentStep += 1

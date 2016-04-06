@@ -69,7 +69,7 @@ class DeepQNetwork:
     init_norm = Gaussian(loc=0.0, scale=0.01)
     layers = []
     # The final hidden layer is fully-connected and consists of 512 rectifier units.
-    layers.append(Affine(nout=100, init=init_norm, activation=Rectlin()))
+    layers.append(Affine(nout=50, init=init_norm, activation=Rectlin()))
     # The output layer is a fully-connected linear layer with a single output for each valid action.
     layers.append(Affine(nout=num_actions, init = init_norm))
     return layers
