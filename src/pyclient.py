@@ -48,6 +48,8 @@ antarg.add_argument("--update_sensors_interval", type=int, default=1, help="Upda
 antarg.add_argument("--show_qvalues", type=str2bool, default=False, help="Show Q-values.")
 antarg.add_argument("--update_qvalues_interval", type=int, default=1, help="Update Q-values after every x steps.")
 
+antarg.add_argument("--save_csv", help="Save results in CSV file.")
+
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
 
@@ -58,6 +60,9 @@ netarg.add_argument("--batch_size", type=int, default=32, help="Batch size for n
 netarg.add_argument('--optimizer', choices=['rmsprop', 'adam', 'adadelta'], default='adadelta', help='Network optimization algorithm.')
 netarg.add_argument("--decay_rate", type=float, default=0.95, help="Decay rate for RMSProp and Adadelta algorithms.")
 netarg.add_argument("--clip_error", type=float, default=0, help="Clip error term in update between this number and its negative.")
+
+netarg.add_argument("--hidden_nodes", type=int, default=100, help="Number of nodes in hidden layer.")
+
 netarg.add_argument("--target_steps", type=int, default=10000, help="Copy main network to target network after this many steps.")
 netarg.add_argument("--load_weights", help="Load network from file.")
 netarg.add_argument("--save_weights_prefix", default="test", help="After each epoch save network to given file. Epoch and extension will be appended.")

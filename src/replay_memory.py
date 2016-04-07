@@ -1,4 +1,5 @@
 import numpy as np
+import cPickle as pickle
 import random
 import logging
 logger = logging.getLogger(__name__)
@@ -49,3 +50,13 @@ class ReplayMemory:
     #assert not np.any(rewards < 0), "yay, negative reward sampled: %s" % str(rewards)
     return prestates, steers, speeds, rewards, poststates, terminals
 
+  def save(self, filename):
+    with open(filename, 'wb') as f:
+      pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+  def load(self, filename):
+    with open(filename, 'rb') as f:
+      _dict = pickle.load(f)
+      assert self.state_size == _dict['state_size']
+      # assign all members of dictionary to self
+      self.__dict__.update(_dict)

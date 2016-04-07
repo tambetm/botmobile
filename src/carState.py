@@ -193,7 +193,10 @@ class CarState(object):
     
     def setLastLapTimeD(self):
         self.lastLapTime = self.getFloatD('lastLapTime')
-    
+
+    def getLastLapTime(self):
+        return self.lastLapTime
+
     def setOpponents(self, opponents):
         self.opponents = opponents
         

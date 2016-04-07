@@ -9,6 +9,7 @@ import carState
 import carControl
 import numpy as np
 import random
+import csv
 
 from replay_memory import ReplayMemory
 from deepqnetwork import DeepQNetwork
@@ -48,6 +49,11 @@ class Driver(object):
 
         self.enable_training = args.enable_training
         self.enable_exploration = args.enable_exploration
+        self.save_csv = args.save_csv
+        if self.save_csv:
+          self.csv_file = open(args.save_csv, "wb")
+          self.csv_writer = csv.writer(self.csv_file)
+          self.csv_writer.writerow(['episode', 'distFormStart', 'distRaced', 'curLapTime', 'lastLapTime', 'racePos', 'epsilon', 'replay_memory', 'train_steps'])
 
         self.total_train_steps = 0
         self.exploration_decay_steps = args.exploration_decay_steps
@@ -232,7 +238,11 @@ class Driver(object):
     def onShutDown(self):
         if self.save_weights_prefix:
             self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
-    
+            self.mem.save(self.save_weights_prefix + "_" + str(self.episode) + "_replay.pkl")
+
+        if self.save_csv:
+            self.csv_file.close()
+
     def onRestart(self):
     
         self.prev_rpm = None
@@ -241,11 +251,29 @@ class Driver(object):
         self.prev_steer = None
         self.prev_speed = None
 
-        if self.save_weights_prefix and self.episode > 0 and self.episode % self.save_interval == 0:
-            self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
-
         if self.episode > 0:
-          dist = self.state.getDistRaced()
-          self.distances.append(dist)
-          print "Episode:", self.episode, "\t", "Distance:", dist, "\t", "Max:", max(self.distances), "\t", "AvgLast10:", np.mean(self.distances[-10:])
+            dist = self.state.getDistRaced()
+            self.distances.append(dist)
+            epsilon = self.getEpsilon()
+            print "Episode:", self.episode, "\tDistance:", dist, "\tMax:", max(self.distances), "\tMedian10:", np.median(self.distances[-10:]), \
+                "\tEpsilon:", epsilon, "\tReplay memory:", self.mem.count
+
+            if self.save_weights_prefix and self.save_interval > 0 and self.episode % self.save_interval == 0:
+                self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
+                #self.mem.save(self.save_weights_prefix + "_" + str(self.episode) + "_replay.pkl")
+
+            if self.save_csv:
+                self.csv_writer.writerow([
+                    self.episode, 
+                    self.state.getDistFromStart(), 
+                    self.state.getDistRaced(), 
+                    self.state.getCurLapTime(), 
+                    self.state.getLastLapTime(), 
+                    self.state.getRacePos(), 
+                    epsilon, 
+                    self.mem.count,
+                    self.total_train_steps
+                ])
+                self.csv_file.flush()
+
         self.episode += 1
