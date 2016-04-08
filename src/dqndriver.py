@@ -42,10 +42,13 @@ class Driver(object):
         self.mem = ReplayMemory(args.replay_size, self.num_inputs, args)
         self.minibatch_size = args.batch_size
 
+        if args.load_replay:
+            self.mem.load(args.load_replay)
         if args.load_weights:
             self.net.load_weights(args.load_weights)
         self.save_weights_prefix = args.save_weights_prefix
         self.save_interval = args.save_interval
+        self.save_replay = args.save_replay
 
         self.enable_training = args.enable_training
         self.enable_exploration = args.enable_exploration
@@ -59,6 +62,7 @@ class Driver(object):
         self.exploration_decay_steps = args.exploration_decay_steps
         self.exploration_rate_start = args.exploration_rate_start
         self.exploration_rate_end = args.exploration_rate_end
+        self.skip = args.skip
 
         self.show_sensors = args.show_sensors
         self.show_qvalues = args.show_qvalues
@@ -130,23 +134,29 @@ class Driver(object):
         # show sensors
         if self.show_sensors:
             self.stats.update(self.state)
-        
+
+        # training
+        if self.enable_training and self.mem.count >= self.minibatch_size:
+          minibatch = self.mem.getMinibatch()
+          self.net.train(minibatch)
+          self.total_train_steps += 1
+          #print "total_train_steps:", self.total_train_steps
+
+        # skip frame and use the same action as previously
+        if self.skip > 0:
+            self.frame = (self.frame + 1) % self.skip
+            if self.frame != 0:
+                return self.control.toMsg()
+
         # fetch state, calculate reward and terminal indicator  
         state = self.getState()
         terminal = self.getTerminal()
         reward = self.getReward(terminal)
         #print "reward:", reward
 
-        if self.enable_training:
-          # store new experience in replay memory
-          if self.prev_state is not None and self.prev_steer is not None and self.prev_speed is not None:
+        # store new experience in replay memory
+        if self.enable_training and self.prev_state is not None and self.prev_steer is not None and self.prev_speed is not None:
             self.mem.add(self.prev_state, self.prev_steer, self.prev_speed, reward, state, terminal)
-          # training
-          if self.mem.count >= self.minibatch_size:
-              minibatch = self.mem.getMinibatch()
-              self.net.train(minibatch)
-              self.total_train_steps += 1
-              #print "total_train_steps:", self.total_train_steps
 
         # if terminal state (out of track), then restart game
         if terminal:
@@ -238,7 +248,9 @@ class Driver(object):
     def onShutDown(self):
         if self.save_weights_prefix:
             self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
-            self.mem.save(self.save_weights_prefix + "_" + str(self.episode) + "_replay.pkl")
+        
+        if self.save_replay:
+            self.mem.save(self.save_replay)
 
         if self.save_csv:
             self.csv_file.close()
@@ -250,6 +262,7 @@ class Driver(object):
         self.prev_state = None
         self.prev_steer = None
         self.prev_speed = None
+        self.frame = -1
 
         if self.episode > 0:
             dist = self.state.getDistRaced()

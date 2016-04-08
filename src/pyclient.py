@@ -41,7 +41,8 @@ antarg.add_argument("--pretrained_network", default="models/zura_test_55.pkl", h
 
 antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
-antarg.add_argument("--exploration_decay_steps", type=float, default=50000, help="How many steps to decay the exploration rate.")
+antarg.add_argument("--exploration_decay_steps", type=float, default=10000, help="How many steps to decay the exploration rate.")
+antarg.add_argument("--skip", type=int, default=0, help="Use the same action for this number of consecutive states.")
 
 antarg.add_argument("--show_sensors", type=str2bool, default=False, help="Show sensors.")
 antarg.add_argument("--update_sensors_interval", type=int, default=1, help="Update sensor values after every x steps.")
@@ -52,6 +53,8 @@ antarg.add_argument("--save_csv", help="Save results in CSV file.")
 
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
+memarg.add_argument("--load_replay", help="Load replay memory from this file.")
+memarg.add_argument("--save_replay", help="Save replay memory to this file at the end of training.")
 
 netarg = parser.add_argument_group('Deep Q-learning network')
 netarg.add_argument("--learning_rate", type=float, default=0.00025, help="Learning rate.")
@@ -61,7 +64,8 @@ netarg.add_argument('--optimizer', choices=['rmsprop', 'adam', 'adadelta'], defa
 netarg.add_argument("--decay_rate", type=float, default=0.95, help="Decay rate for RMSProp and Adadelta algorithms.")
 netarg.add_argument("--clip_error", type=float, default=0, help="Clip error term in update between this number and its negative.")
 
-netarg.add_argument("--hidden_nodes", type=int, default=100, help="Number of nodes in hidden layer.")
+netarg.add_argument("--hidden_nodes", type=int, default=50, help="Number of nodes in hidden layer.")
+netarg.add_argument("--hidden_layers", type=int, default=1, help="Number of hidden layers.")
 
 netarg.add_argument("--target_steps", type=int, default=10000, help="Copy main network to target network after this many steps.")
 netarg.add_argument("--load_weights", help="Load network from file.")
@@ -77,6 +81,8 @@ neonarg.add_argument('--stochastic_round', const=True, type=int, nargs='?', defa
 comarg = parser.add_argument_group('Common')
 comarg.add_argument("--random_seed", type=int, help="Random seed for repeatable experiments.")
 comarg.add_argument("--log_level", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], default="INFO", help="Log level.")
+comarg.add_argument("--verbose", type=str2bool, default=False, help="Enable debugging information.")
+
 
 # name of the driver to use 
 parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo'], default='dqn')
@@ -131,7 +137,7 @@ sock.settimeout(1.0)
 shutdownClient = False
 curEpisode = 0
 
-verbose = False
+verbose = arguments.verbose
 
 while not shutdownClient:
     while True:

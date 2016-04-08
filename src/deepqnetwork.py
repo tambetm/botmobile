@@ -19,6 +19,7 @@ class DeepQNetwork:
     self.num_steers = num_steers
     self.num_speeds = num_speeds
     self.num_actions = num_steers + num_speeds
+    self.num_layers = args.hidden_layers
     self.hidden_nodes = args.hidden_nodes
     self.batch_size = args.batch_size
     self.discount_rate = args.discount_rate
@@ -38,8 +39,7 @@ class DeepQNetwork:
     self.targets = self.be.empty((self.num_actions, self.batch_size))
 
     # create model
-    layers = self._createLayers(self.hidden_nodes, self.num_actions)
-    self.model = Model(layers = layers)
+    self.model = Model(layers = self._createLayers())
     self.cost = GeneralizedCost(costfunc = SumSquared())
     self.model.initialize(self.input_shape[:-1], self.cost)
     if args.optimizer == 'rmsprop':
@@ -59,20 +59,19 @@ class DeepQNetwork:
     self.target_steps = args.target_steps
     self.train_iterations = 0
     if self.target_steps:
-      self.target_model = Model(layers = self._createLayers(self.hidden_nodes, self.num_actions))
+      self.target_model = Model(layers = self._createLayers())
       self.target_model.initialize(self.input_shape[:-1])
       self.save_weights_prefix = args.save_weights_prefix
     else:
       self.target_model = self.model
 
-  def _createLayers(self, hidden_nodes, num_actions):
+  def _createLayers(self):
     # create network
     init_norm = Gaussian(loc=0.0, scale=0.01)
     layers = []
-    # The final hidden layer is fully-connected and consists of 512 rectifier units.
-    layers.append(Affine(nout=hidden_nodes, init=init_norm, activation=Rectlin()))
-    # The output layer is a fully-connected linear layer with a single output for each valid action.
-    layers.append(Affine(nout=num_actions, init = init_norm))
+    for i in xrange(self.num_layers):
+        layers.append(Affine(nout=self.hidden_nodes, init=init_norm, activation=Rectlin()))
+    layers.append(Affine(nout=self.num_actions, init = init_norm))
     return layers
 
   def _setInput(self, states):
