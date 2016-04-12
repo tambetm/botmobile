@@ -85,7 +85,7 @@ comarg.add_argument("--verbose", type=str2bool, default=False, help="Enable debu
 
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo'], default='dqn')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac'], default='linear')
 arguments = parser.parse_args()
 
 # Print summary
@@ -121,6 +121,9 @@ elif arguments.driver == 'linear':
     driver = Driver(arguments)
 elif arguments.driver == 'demo':
     from demodriver import Driver
+    driver = Driver(arguments)
+elif arguments.driver == 'ac':
+    from acdriver import Driver
     driver = Driver(arguments)
 else:
     assert False, "Unknown driver"
