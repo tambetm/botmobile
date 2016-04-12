@@ -10,7 +10,7 @@ class LinearModel:
     self.action_size = action_size
     self.states = np.zeros((self.size, self.state_size))
     self.actions = np.zeros((self.size, self.action_size))
-    self.coeff = np.zeros((self.state_size, self.action_size))
+    self.coeff = np.zeros((self.state_size + 1, self.action_size))
     self.count = 0
     self.current = 0
 
@@ -26,11 +26,14 @@ class LinearModel:
     #logger.debug("Memory count %d" % self.count)
 
   def train(self):
-    self.coeff = np.linalg.lstsq(self.states[:self.count], self.actions[:self.count])[0]
-    assert self.coeff.shape == (self.state_size, self.action_size)
+    states = np.hstack((self.states[:self.count], np.ones((self.count, 1))))
+    self.coeff = np.linalg.lstsq(states, self.actions[:self.count])[0]
+    assert self.coeff.shape == (self.state_size + 1, self.action_size)
 
   def predict(self, state):
     assert self.coeff is not None
+    state = np.hstack((state, [1]))
+    assert state.shape == (self.state_size + 1,) 
     return np.dot(state, self.coeff)
 
 if __name__ == "__main__":

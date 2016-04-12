@@ -48,6 +48,9 @@ class Driver(object):
         self.episode = 0
         self.onRestart()
         
+        #from plotlinear import PlotLinear
+        #self.plot = PlotLinear(self.model, ['Speed', 'Angle', 'TrackPos'], ['Steer', 'Accel', 'Brake'])
+
         if self.show_sensors:
             from sensorstats import Stats
             self.stats = Stats(inevery=8)
@@ -89,19 +92,12 @@ class Driver(object):
         if self.show_sensors:
             self.stats.update(self.state)
         
-        # if terminal state (out of track), then restart game
-        if self.getTerminal():
-            print "terminal state, restarting"
-            self.control.setMeta(1)
-            return self.control.toMsg()
-        else:
-            self.control.setMeta(0)
-
         # during exploration use hard-coded algorithm
         state = self.getState()
+        terminal = self.getTerminal()
         epsilon = self.getEpsilon()
         print "epsilon: ", epsilon, "\treplay: ", self.model.count
-        if self.enable_exploration and random.random() < epsilon:
+        if terminal or (self.enable_exploration and random.random() < epsilon):
             self.steer()
             self.speed()
             self.gear()
@@ -109,6 +105,7 @@ class Driver(object):
                 action = (self.control.getSteer(), self.control.getAccel(), self.control.getBrake())
                 self.model.add(state, action)
                 self.model.train()
+                #self.plot.update()
         else:
             steer, accel, brake = self.model.predict(state)
             #print "steer:", steer, "accel:", accel, "brake:", brake
@@ -143,7 +140,23 @@ class Driver(object):
         
         if not up and rpm < 3000:
             gear -= 1
-        
+        '''
+        speed = self.state.getSpeedX()
+
+        if speed < 30:
+            gear = 1
+        elif speed < 60:
+            gear = 2
+        elif speed < 90:
+            gear = 3
+        elif speed < 120:
+            gear = 4
+        elif speed < 150:
+            gear = 5
+        else:
+            gear = 6
+        '''
+
         self.control.setGear(gear)
     
     def speed(self):
