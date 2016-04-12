@@ -28,7 +28,6 @@ class LinearModel:
   def train(self):
     self.coeff = np.linalg.lstsq(self.states[:self.count], self.actions[:self.count])[0]
     assert self.coeff.shape == (self.state_size, self.action_size)
-    print self.coeff[2]
 
   def predict(self, state):
     assert self.coeff is not None

@@ -36,13 +36,14 @@ class Driver(object):
         self.steer_lock = 0.785398
         self.max_speed = 100
 
-        self.algorithm = args.algorithm
-        self.device = args.device
-        self.mode = args.mode
-        self.maxwheelsteps = args.maxwheelsteps
-        
         self.enable_training = args.enable_training
+        self.enable_exploration = args.enable_exploration
         self.show_sensors = args.show_sensors
+
+        self.total_train_steps = 0
+        self.exploration_decay_steps = args.exploration_decay_steps
+        self.exploration_rate_start = args.exploration_rate_start
+        self.exploration_rate_end = args.exploration_rate_end
 
         self.episode = 0
         self.onRestart()
@@ -50,10 +51,6 @@ class Driver(object):
         if self.show_sensors:
             from sensorstats import Stats
             self.stats = Stats(inevery=8)
-        
-        if self.device == 'wheel':
-            from wheel import Wheel
-            self.wheel = Wheel(args.joystick_nr, args.autocenter, args.gain, args.min_force, args.max_force)
 
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -77,6 +74,13 @@ class Driver(object):
     def getTerminal(self):
         return np.all(np.array(self.state.getTrack()) == -1)
 
+    def getEpsilon(self):
+        # calculate decaying exploration rate
+        if self.total_train_steps < self.exploration_decay_steps:
+            return self.exploration_rate_start - self.total_train_steps * (self.exploration_rate_start - self.exploration_rate_end) / self.exploration_decay_steps
+        else:
+            return self.exploration_rate_end
+
     def drive(self, msg):
         # parse incoming message
         self.state.setFromMsg(msg)
@@ -85,102 +89,34 @@ class Driver(object):
         if self.show_sensors:
             self.stats.update(self.state)
         
-        # fetch state, calculate reward and terminal indicator  
-        state = self.getState()
-        terminal = self.getTerminal()
-
         # if terminal state (out of track), then restart game
-        if terminal:
+        if self.getTerminal():
             print "terminal state, restarting"
             self.control.setMeta(1)
             return self.control.toMsg()
         else:
             self.control.setMeta(0)
 
-        if self.algorithm == 'network':
+        # during exploration use hard-coded algorithm
+        state = self.getState()
+        epsilon = self.getEpsilon()
+        print "epsilon: ", epsilon, "\treplay: ", self.model.count
+        if self.enable_exploration and random.random() < epsilon:
+            self.steer()
+            self.speed()
+            self.gear()
+            if self.enable_training: 
+                action = (self.control.getSteer(), self.control.getAccel(), self.control.getBrake())
+                self.model.add(state, action)
+                self.model.train()
+        else:
             steer, accel, brake = self.model.predict(state)
             #print "steer:", steer, "accel:", accel, "brake:", brake
             self.control.setSteer(steer)
             self.control.setAccel(accel)
             self.control.setBrake(brake)
-        elif self.algorithm == 'hardcoded':
-            self.steer()
-            self.speed()
             self.gear()
-        else:
-            assert False, "Unknown algorithm"
-
-        # gears are always automatic
-        self.gear()
-
-        # check for manual override 
-        # might be partial, so we always need to choose algorithmic actions first
-        events = self.wheel.getEvents()
-        if self.mode == 'override' and self.device == 'wheel' and self.wheel.supportsDrive():
-            # wheel
-            for event in events:
-                if self.wheel.isWheelMotion(event):
-                    self.wheelsteps = self.maxwheelsteps
-
-            wheel = None
-            if self.wheelsteps > 0:
-                wheel = self.wheel.getWheel()
-                steer = self.control.setSteer(wheel)
-                self.wheelsteps -= 1
-
-            # gas pedal
-            accel = self.wheel.getAccel()
-            if accel > 0:
-                self.control.setAccel(accel)
-            
-            # brake pedal
-            brake = self.wheel.getBrake()
-            if brake > 0:
-                self.control.setBrake(brake)
-
-            if self.enable_training and (accel > 0 or brake > 0 or wheel is not None): 
-                action = (wheel, accel, brake)
-                self.model.add(state, action)
-                if self.model.count >= 10:
-                    self.model.train()
-
-        # check for wheel buttons always, not only in override mode
-        if self.device == 'wheel':
-            for event in events:
-                if self.wheel.isButtonDown(event, 2):
-                    self.algorithm = 'network'
-                    self.mode = 'override'
-                    self.wheel.generateForce(0)
-                    print "Switched to network algorithm"
-                elif self.wheel.isButtonDown(event, 3):
-                    self.algorithm = 'network'
-                    self.mode = 'ff'
-                    self.enable_training = False
-                    print "Switched to pretrained network"
-                elif self.wheel.isButtonDown(event, 4):
-                    self.enable_training = not self.enable_training
-                    print "Switched training", "ON" if self.enable_training else "OFF"
-                elif self.wheel.isButtonDown(event, 5):
-                    self.algorithm = 'hardcoded'
-                    self.mode = 'ff'
-                    print "Switched to hardcoded algorithm"
-                elif self.wheel.isButtonDown(event, 6):
-                    self.mode = 'override'
-                    self.wheel.generateForce(0)
-                elif self.wheel.isButtonDown(event, 7):
-                    self.mode = 'ff' if self.mode == 'override' else 'override'
-                    if self.mode == 'override':
-                        self.wheel.generateForce(0)
-                    print "Switched force feedback", "ON" if self.mode == 'ff' else "OFF"
-                elif self.wheel.isButtonDown(event, 0) or self.wheel.isButtonDown(event, 8):
-                    gear = max(-1, gear - 1)
-                elif self.wheel.isButtonDown(event, 1) or self.wheel.isButtonDown(event, 9):
-                    gear = min(6, gear + 1)
-
-        # turn wheel using force feedback
-        if self.mode == 'ff' and self.device == 'wheel' and self.wheel.supportsForceFeedback():
-            wheel = self.wheel.getWheel()
-            self.wheel.generateForce(self.control.getSteer()-wheel)
+        self.total_train_steps += 1
 
         return self.control.toMsg()
 
@@ -229,11 +165,7 @@ class Driver(object):
         pass
     
     def onRestart(self):
-        if self.mode == 'ff':
-            self.wheel.generateForce(0)
-    
         self.prev_rpm = None
-        self.wheelsteps = 0
 
         self.episode += 1
         print "Episode", self.episode
