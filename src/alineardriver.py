@@ -23,7 +23,7 @@ class Driver(object):
         self.state = carState.CarState()
         self.control = carControl.CarControl()
 
-        self.state_size = 3
+        self.state_size = 19
         self.action_size = 3
         self.model = LinearModel(args.replay_size, self.state_size, self.action_size)
 
@@ -64,7 +64,7 @@ class Driver(object):
         return self.parser.stringify({'init': self.angles})
 
     def getState(self):
-        state = np.array([self.state.getSpeedX(), self.state.getAngle(), self.state.getTrackPos()])
+        state = np.array(self.state.getTrack())
         assert state.shape == (self.state_size,)
         return state
 
@@ -121,7 +121,6 @@ class Driver(object):
             self.control.setBrake(brake)
             # turn the wheel according to model
             self.wheel.generateForce(self.control.getSteer() - self.wheel.getWheel())
-
 
         self.total_train_steps += 1
 
