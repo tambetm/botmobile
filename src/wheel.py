@@ -1,7 +1,7 @@
 import sdl2, sdl2.ext
 
 class Wheel:
-    def __init__(self, joystick_nr = 0, autocenter = 0, gain = 100, min_force = 0x1000, max_force = 0x7fff, wheel_axis = 0, accel_axis = 1, brake_axis = 2):
+    def __init__(self, joystick_nr = 0, autocenter = 0, gain = 100, min_level = 0x1000, max_level = 0x7fff, min_force = 0.005, wheel_axis = 0, accel_axis = 1, brake_axis = 2):
 
         self.joystick_nr = joystick_nr
         self.autocenter = autocenter
@@ -45,8 +45,9 @@ class Wheel:
         self.accel_axis = accel_axis
         self.brake_axis = brake_axis
 
+        self.min_level = min_level
+        self.max_level = max_level
         self.min_force = min_force
-        self.max_force = max_force
 
 
     def supportsDrive(self):
@@ -88,11 +89,11 @@ class Wheel:
     def generateForce(self, force):
         assert self.haptic is not None
 
-        if force > 0.005:
+        if force > self.min_force:
             force = min(1, force)
             dir = -1
             print "left", force
-        elif force < -0.005:
+        elif force < -self.min_force:
             force = -force
             force = min(1, force)
             dir = 1
@@ -102,7 +103,7 @@ class Wheel:
             level = 0
             print "center"
 
-        level = self.min_force + int((self.max_force - self.min_force) * force)
+        level = self.min_level + int((self.max_level - self.min_level) * force)
 
         efx = sdl2.SDL_HapticEffect(type=sdl2.SDL_HAPTIC_CONSTANT, constant= \
             sdl2.SDL_HapticConstant(type=sdl2.SDL_HAPTIC_CONSTANT, direction= \

@@ -10,7 +10,7 @@ import carControl
 import pygame
 from tools import CSVLogger
 
-class WheelDriver(object):
+class Driver(object):
     '''
     A driver object for the SCRC
     '''

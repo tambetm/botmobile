@@ -31,8 +31,9 @@ antarg.add_argument("--mode", choices=['override', 'ff'], default="override", he
 antarg.add_argument("--joystick_nr", type=int, default=0, help="Joystick number in case of many.")
 antarg.add_argument("--autocenter", type=int, default=0, help="Autocenter for force feedback wheels.")
 antarg.add_argument("--gain", type=int, default=100, help="Gain for force feedback wheels.")
-antarg.add_argument("--min_force", type=int, default=0x1000, help="Minimal force to apply.")
-antarg.add_argument("--max_force", type=int, default=0x7fff, help="Maximal force to apply.")
+antarg.add_argument("--min_force", type=float, default=0.005, help="Only apply force if stronger than this.")
+antarg.add_argument("--min_level", type=int, default=0x1000, help="Minimal force level to apply.")
+antarg.add_argument("--max_level", type=int, default=0x7fff, help="Maximal force level to apply.")
 antarg.add_argument("--maxwheelsteps", type=int, default=50, help="How many steps wheel control persists after moving the wheel.")
 
 antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enable training, by default True.")
@@ -85,7 +86,7 @@ comarg.add_argument("--verbose", type=str2bool, default=False, help="Enable debu
 
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac'], default='linear')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac', 'alinear'], default='linear')
 arguments = parser.parse_args()
 
 # Print summary
@@ -118,6 +119,9 @@ elif arguments.driver == 'dqn':
     driver = Driver(arguments)
 elif arguments.driver == 'linear':
     from lineardriver import Driver
+    driver = Driver(arguments)
+elif arguments.driver == 'alinear':
+    from alineardriver import Driver
     driver = Driver(arguments)
 elif arguments.driver == 'demo':
     from demodriver import Driver
