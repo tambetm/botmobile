@@ -12,6 +12,23 @@ import time
 def str2bool(v):
   return v.lower() in ("yes", "true", "t", "1")
 
+def parseInts(rng):
+    ids = []
+    for x in map(str.strip,rng.split(',')):
+        if x.isdigit():
+        	ids.append(int(x))
+        	continue
+        if x[0] == '<':
+        	ids.extend(range(1,int(x[1:])+1))
+        	continue
+        if '-' in x:
+        	xr = map(str.strip,x.split('-'))
+        	ids.extend(range(int(xr[0]),int(xr[1])+1))
+        	continue
+        else:
+            raise Exception, 'unknown range type: "%s"'%x
+    return ids
+
 # Configure the argument parser
 parser = argparse.ArgumentParser(description = 'Python client to connect to the TORCS SCRC server.')
 
@@ -52,6 +69,8 @@ antarg.add_argument("--update_qvalues_interval", type=int, default=1, help="Upda
 
 antarg.add_argument("--save_csv", help="Save results in CSV file.")
 
+parser.add_argument('--state_fields', type=parseInts, default="17-35")
+
 memarg = parser.add_argument_group('Replay memory')
 memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
 memarg.add_argument("--load_replay", help="Load replay memory from this file.")
@@ -86,7 +105,7 @@ comarg.add_argument("--verbose", type=str2bool, default=False, help="Enable debu
 
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac', 'alinear'], default='linear')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac', 'alinear', 'record', 'player'], default='linear')
 arguments = parser.parse_args()
 
 # Print summary
@@ -128,6 +147,12 @@ elif arguments.driver == 'demo':
     driver = Driver(arguments)
 elif arguments.driver == 'ac':
     from acdriver import Driver
+    driver = Driver(arguments)
+elif arguments.driver == 'record':
+    from recorddriver import Driver
+    driver = Driver(arguments)
+elif arguments.driver == 'player':
+    from playerdriver import Driver
     driver = Driver(arguments)
 else:
     assert False, "Unknown driver"

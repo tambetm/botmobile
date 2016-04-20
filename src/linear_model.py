@@ -36,6 +36,14 @@ class LinearModel:
     assert state.shape == (self.state_size + 1,) 
     return np.dot(state, self.coeff)
 
+  def load(self, filename):
+    self.coeff = np.load(filename)
+    assert self.coeff.shape == (self.state_size + 1, self.action_size)
+    print self.coeff
+  
+  def save(self, filename):
+    np.save(filename, self.coeff)
+
 if __name__ == "__main__":
     model = LinearModel(10, 1, 1)
     model.add((1), (1))
