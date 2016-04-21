@@ -46,12 +46,13 @@ antarg.add_argument("--device", choices=['wheel', 'keyboard'], default="wheel", 
 antarg.add_argument("--mode", choices=['override', 'ff'], default="override", help="Whether to use manual control override or force feedback to showcase moves.")
 
 antarg.add_argument("--joystick_nr", type=int, default=0, help="Joystick number in case of many.")
-antarg.add_argument("--autocenter", type=int, default=0, help="Autocenter for force feedback wheels.")
+antarg.add_argument("--autocenter", type=int, default=1, help="Autocenter for force feedback wheels.")
 antarg.add_argument("--gain", type=int, default=100, help="Gain for force feedback wheels.")
 antarg.add_argument("--min_force", type=float, default=0.005, help="Only apply force if stronger than this.")
 antarg.add_argument("--min_level", type=int, default=0x1000, help="Minimal force level to apply.")
 antarg.add_argument("--max_level", type=int, default=0x4000, help="Maximal force level to apply.")
 antarg.add_argument("--maxwheelsteps", type=int, default=50, help="How many steps wheel control persists after moving the wheel.")
+antarg.add_argument("--max_speed", type=int, default=0, help="Maximum speed during driving.")
 
 antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enable training, by default True.")
 antarg.add_argument("--enable_exploration", type=str2bool, default=True, help="Enable exploration, by default True.")

@@ -23,7 +23,7 @@ class Driver(object):
         self.state = carState.CarState()
         self.control = carControl.CarControl()
 
-        self.state_size = 20
+        self.state_size = 19
         self.action_size = 3
         self.model = LinearModel(args.replay_size, self.state_size, self.action_size)
 
@@ -38,6 +38,7 @@ class Driver(object):
 
         from wheel import Wheel
         self.wheel = Wheel(args.joystick_nr, args.autocenter, args.gain, args.min_level, args.max_level, args.min_force)
+        self.max_speed = args.max_speed
 
         self.episode = 0
         self.onRestart()
@@ -64,7 +65,7 @@ class Driver(object):
         return self.parser.stringify({'init': self.angles})
 
     def getState(self):
-        state = np.array(self.state.getTrack() + [self.state.getSpeedX()])
+        state = np.array(self.state.getTrack())
         assert state.shape == (self.state_size,)
         return state
 
@@ -116,6 +117,8 @@ class Driver(object):
             self.control.setSteer(self.wheel.getWheel())
             self.control.setAccel(self.wheel.getAccel())
             self.control.setBrake(self.wheel.getBrake())
+            if self.max_speed > 0 and self.state.getSpeedX() > self.max_speed:
+                self.control.setAccel(0)
             if self.enable_training and not terminal:
                 action = (self.control.getSteer(), self.control.getAccel(), self.control.getBrake())
                 self.model.add(state, action)
