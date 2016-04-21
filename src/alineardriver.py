@@ -23,7 +23,7 @@ class Driver(object):
         self.state = carState.CarState()
         self.control = carControl.CarControl()
 
-        self.state_size = 19
+        self.state_size = 20
         self.action_size = 3
         self.model = LinearModel(args.replay_size, self.state_size, self.action_size)
 
@@ -64,7 +64,7 @@ class Driver(object):
         return self.parser.stringify({'init': self.angles})
 
     def getState(self):
-        state = np.array(self.state.getTrack())
+        state = np.array(self.state.getTrack() + [self.state.getSpeedX()])
         assert state.shape == (self.state_size,)
         return state
 
@@ -87,7 +87,6 @@ class Driver(object):
             self.stats.update(self.state)
 
         events = self.wheel.getEvents()
-        self.gear()
         for event in events:
             if self.wheel.isButtonDown(event, 0) or self.wheel.isButtonDown(event, 8):
                 gear = self.state.getGear()
@@ -98,13 +97,22 @@ class Driver(object):
                 gear = min(6, gear + 1)
                 self.control.setGear(gear)
 
+        # by default predict all controls by model
         state = self.getState()
+        steer, accel, brake = self.model.predict(state)
+        self.control.setSteer(max(-1, min(1, steer)))
+        self.control.setAccel(max(0, min(1, accel)))
+        #self.control.setBrake(max(0, min(1, brake)))
+
+        # if not out of track turn the wheel according to model
         terminal = self.getTerminal()
+        if not terminal:
+            self.gear()
+
+        # replace random exploration with user assistance
         epsilon = self.getEpsilon()
         print "epsilon: ", epsilon, "\treplay: ", self.model.count
         if terminal or (self.enable_exploration and random.random() < epsilon):
-            if terminal:
-                self.wheel.generateForce(0)
             self.control.setSteer(self.wheel.getWheel())
             self.control.setAccel(self.wheel.getAccel())
             self.control.setBrake(self.wheel.getBrake())
@@ -113,52 +121,42 @@ class Driver(object):
                 self.model.add(state, action)
                 self.model.train()
                 #self.plot.update()
+            if terminal:
+                self.wheel.resetForce()
         else:
-            # by default predict all controls by model
-            steer, accel, brake = self.model.predict(state)
-            self.control.setSteer(steer)
-            self.control.setAccel(accel)
-            self.control.setBrake(brake)
-            # turn the wheel according to model
-            self.wheel.generateForce(self.control.getSteer() - self.wheel.getWheel())
+            steer = self.control.getSteer()
+            assert -1 <= steer <= 1
+            wheel = self.wheel.getWheel()
+            #print "steer:", steer, "wheel:", wheel
+            self.wheel.generateForce(steer - wheel)
 
         self.total_train_steps += 1
 
         return self.control.toMsg()
 
     def gear(self):
+        '''
         rpm = self.state.getRpm()
         gear = self.state.getGear()
         
-        if self.prev_rpm == None:
-            up = True
-        else:
-            if (self.prev_rpm - rpm) < 0:
-                up = True
-            else:
-                up = False
-        
-        if up and rpm > 7000:
+        if rpm > 7000:
             gear += 1
-        
-        if not up and rpm < 3000:
-            gear -= 1
         '''
         speed = self.state.getSpeedX()
+        gear = self.state.getGear()
 
-        if speed < 30:
+        if speed < 25:
             gear = 1
-        elif speed < 60:
+        elif 30 < speed < 55:
             gear = 2
-        elif speed < 90:
+        elif 60 < speed < 85:
             gear = 3
-        elif speed < 120:
+        elif 90 < speed < 115:
             gear = 4
-        elif speed < 150:
+        elif 120 < speed < 145:
             gear = 5
-        else:
+        elif speed > 150:
             gear = 6
-        '''
 
         self.control.setGear(gear)
     
@@ -166,7 +164,5 @@ class Driver(object):
         pass
     
     def onRestart(self):
-        self.prev_rpm = None
-
         self.episode += 1
         print "Episode", self.episode

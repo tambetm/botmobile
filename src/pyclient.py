@@ -50,16 +50,16 @@ antarg.add_argument("--autocenter", type=int, default=0, help="Autocenter for fo
 antarg.add_argument("--gain", type=int, default=100, help="Gain for force feedback wheels.")
 antarg.add_argument("--min_force", type=float, default=0.005, help="Only apply force if stronger than this.")
 antarg.add_argument("--min_level", type=int, default=0x1000, help="Minimal force level to apply.")
-antarg.add_argument("--max_level", type=int, default=0x7fff, help="Maximal force level to apply.")
+antarg.add_argument("--max_level", type=int, default=0x4000, help="Maximal force level to apply.")
 antarg.add_argument("--maxwheelsteps", type=int, default=50, help="How many steps wheel control persists after moving the wheel.")
 
 antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enable training, by default True.")
 antarg.add_argument("--enable_exploration", type=str2bool, default=True, help="Enable exploration, by default True.")
 antarg.add_argument("--pretrained_network", default="models/zura_test_55.pkl", help="Pretrained network to load when appropriate button is pressed.")
 
-antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
-antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
-antarg.add_argument("--exploration_decay_steps", type=float, default=10000, help="How many steps to decay the exploration rate.")
+antarg.add_argument("--exploration_rate_start", type=float, default=1.0, help="Exploration rate at the beginning of decay.")
+antarg.add_argument("--exploration_rate_end", type=float, default=0.0, help="Exploration rate at the end of decay.")
+antarg.add_argument("--exploration_decay_steps", type=int, default=10000, help="How many steps to decay the exploration rate.")
 antarg.add_argument("--skip", type=int, default=0, help="Use the same action for this number of consecutive states.")
 
 antarg.add_argument("--show_sensors", type=str2bool, default=False, help="Show sensors.")

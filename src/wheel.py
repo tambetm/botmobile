@@ -48,7 +48,7 @@ class Wheel:
         self.min_level = min_level
         self.max_level = max_level
         self.min_force = min_force
-
+        
 
     def supportsDrive(self):
         return self.joystick is not None
@@ -100,14 +100,19 @@ class Wheel:
             print "right", force
         else:
             dir = 0
-            level = 0
             print "center"
 
-        level = self.min_level + int((self.max_level - self.min_level) * force)
+        if dir == 0:
+            level = 0
+        else:
+            level = self.min_level + int((self.max_level - self.min_level) * force)
 
         efx = sdl2.SDL_HapticEffect(type=sdl2.SDL_HAPTIC_CONSTANT, constant= \
             sdl2.SDL_HapticConstant(type=sdl2.SDL_HAPTIC_CONSTANT, direction= \
                                     sdl2.SDL_HapticDirection(type=sdl2.SDL_HAPTIC_CARTESIAN, dir=(dir,0,0)), \
             length=sdl2.SDL_HAPTIC_INFINITY, level=level, attack_length=0, fade_length=0))
         sdl2.SDL_HapticUpdateEffect(self.haptic, self.effect_id, efx)
+
+    def resetForce(self):
+        self.generateForce(0)
 
