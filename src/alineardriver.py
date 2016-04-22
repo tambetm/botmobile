@@ -83,10 +83,6 @@ class Driver(object):
         # parse incoming message
         self.state.setFromMsg(msg)
         
-        # show sensors
-        if self.show_sensors:
-            self.stats.update(self.state)
-
         # by default predict all controls by model
         state = self.getState()
         steer, accel, brake = self.model.predict(state)
@@ -119,6 +115,11 @@ class Driver(object):
 
         # replace random exploration with user assistance
         epsilon = self.getEpsilon()
+        # show sensors
+        if self.show_sensors:
+            self.state.botcontrol = 1 - epsilon
+            self.state.mancontrol = (self.terminal_counter > 0)
+            self.stats.update(self.state)
         print "epsilon: ", epsilon, "\treplay: ", self.model.count
         if self.terminal_counter > 0 or (self.enable_exploration and random.random() < epsilon):
             self.control.setSteer(self.wheel.getWheel())
