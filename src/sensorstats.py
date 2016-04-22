@@ -1,12 +1,14 @@
 import pygame
 import random
 import math
+import time
+import pygame.gfxdraw
 
 # Define some colors
 BLACK    = (   0,   0,   0)
 WHITE    = ( 255, 255, 255)
 BARCOL   =(102, 170, 255)
-LINECOL  =(0, 255,0)
+LINECOL  =(19, 122,139)
 
 # This is a simple class that will help us print to the screen
 # It has nothing to do with the joysticks, just outputing the
@@ -42,11 +44,15 @@ class Stats():
     def __init__(self, inevery):
         """ updates screen only in inevery step"""
         pygame.init() # needed for keyboard input
-        self.screen = pygame.display.set_mode([300, 700])
+        self.screen = pygame.display.set_mode([300, 800])
         self.textPrint=TextPrint(self.screen)
         self.inevery = 10
         self.curstep = -1
         self.centerx = self.screen.get_rect().centerx 
+        self.flip = 0 # flip bit for flashing
+        self.last_flush = 0
+        self.car_img = pygame.image.load('car.png')
+        self.car_img = pygame.transform.scale(self.car_img, (80, 176))
 
 
     def addRect(self, centerx, y, progress, mancontrol):
@@ -62,19 +68,42 @@ class Stats():
         ### First line 
         self.textPrint.y = firstlnpos
         #if self.sta
-        self.textPrint.text('Computer controls')
-        #else:
-       #     self.textPrint.text('Out of track')
+        if not mancontrol:
+            self.textPrint.text('Computer controls')
+        else:
+            self.textPrint.text('Out of track')
        
-        ## second lien percentage
-        txt = font.render(str(percentage) + '%', True, (255,0,0))
-        self.screen.blit(txt, [self.centerx + rect_width / 2 - 10- txt.get_rect().width, y])
+        ## second line percentage or danger
+        if mancontrol:
+            # do danger flash
+            if time.time() - self.last_flush >=1:
+                self.flip ^= 1
+                self.last_flush = time.time()
+            if self.flip:
+                # no need to draw test
+                overr_font = pygame.font.Font(None, 50)
+                txt = overr_font.render('MANUAL', True, (255,0,0))
+                self.screen.blit(txt, [self.centerx - txt.get_rect().width/2, y])
+                txt = overr_font.render('OVERRIDE', True, (255,0,0))
+                self.screen.blit(txt, [self.centerx - txt.get_rect().width/2, y+35])
+        else:
+            txt = font.render(str(percentage) + '%', True, (255,0,0))
+            self.screen.blit(txt, [self.centerx + rect_width / 2 - txt.get_rect().width, y])
        
         ## third line bar or text
         #if percentage < 100:
             # draw prog bar
-        self.rect = pygame.draw.rect(self.screen, BARCOL, (barpos[0], barpos[1], rect_width*progress, rect_height))
-        self.rect = pygame.draw.rect(self.screen, (BLACK), (self.centerx - rect_width / 2, y +fontsize -16, rect_width, rect_height), 2)
+        if mancontrol:
+            # manual control
+            self.textPrint.y = y + fontsize - 16
+            self.textPrint.text('Get back on track!')
+        elif percentage < 100:
+            self.rect = pygame.draw.rect(self.screen, BARCOL, (barpos[0], barpos[1], rect_width*progress, rect_height))
+            self.rect = pygame.draw.rect(self.screen, (BLACK), (self.centerx - rect_width / 2, y +fontsize -16, rect_width, rect_height), 2)
+        else:
+            self.textPrint.y = y + fontsize - 16
+            self.textPrint.text('Take your hands off!')
+
 
         
     def draw_tracks(self, track, y):
@@ -86,7 +115,10 @@ class Stats():
             x = trcenter[0] + math.cos(alpha) * (sens  + 20) * 2
             y = trcenter[1] + math.sin(alpha) * (sens + 20) * 2
             pygame.draw.line(self.screen, LINECOL, trcenter, (x,y), 2)
-        self.rect = pygame.draw.rect(self.screen, (BLACK), (self.centerx - rect_width / 2, y, rect_width, rect_height), 2)
+            pygame.gfxdraw.line(self.screen, trcenter[0],trcenter[1], int(x),int(y), LINECOL)
+        #self.rect = pygame.draw.rect(self.screen, (BLACK), (self.centerx - rect_width / 2, y, rect_width, rect_height), 2)
+        self.screen.blit(self.car_img, [self.centerx - self.car_img.get_rect().width / 2, y])
+
     
     def draw_texts(self, state):
         # angle
@@ -120,9 +152,10 @@ class Stats():
             return
         self.screen.fill(WHITE)
         self.textPrint.reset()
-        self.addRect(self.centerx, 75, state.botcontrol, True)
+        #state.botcontrol = 0.8
+        self.addRect(self.centerx, 75, state.botcontrol, state.mancontrol)
         self.textPrint.y = 300
         #self.draw_texts(state)  
-        self.draw_tracks(state.track, 450)
+        self.draw_tracks(state.track, 600)
         #self.prog_bar.update(100)
         pygame.display.flip()
