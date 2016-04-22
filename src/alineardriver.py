@@ -23,7 +23,7 @@ class Driver(object):
         self.state = carState.CarState()
         self.control = carControl.CarControl()
 
-        self.state_size = 19
+        self.state_size = 20
         self.action_size = 3
         self.model = LinearModel(args.replay_size, self.state_size, self.action_size)
 
@@ -31,7 +31,6 @@ class Driver(object):
         self.enable_exploration = args.enable_exploration
         self.show_sensors = args.show_sensors
 
-        self.total_train_steps = 0
         self.exploration_decay_steps = args.exploration_decay_steps
         self.exploration_rate_start = args.exploration_rate_start
         self.exploration_rate_end = args.exploration_rate_end
@@ -39,9 +38,7 @@ class Driver(object):
         from wheel import Wheel
         self.wheel = Wheel(args.joystick_nr, args.autocenter, args.gain, args.min_level, args.max_level, args.min_force)
         self.max_speed = args.max_speed
-
-        self.episode = 0
-        self.onRestart()
+        self.max_terminal_steps = args.max_terminal_steps
         
         #from plotlinear import PlotLinear
         #self.plot = PlotLinear(self.model, ['Speed', 'Angle', 'TrackPos'], ['Steer', 'Accel', 'Brake'])
@@ -49,6 +46,8 @@ class Driver(object):
         if self.show_sensors:
             from sensorstats import Stats
             self.stats = Stats(inevery=8)
+
+        self.reset()
 
     def init(self):
         '''Return init string with rangefinder angles'''
@@ -65,7 +64,8 @@ class Driver(object):
         return self.parser.stringify({'init': self.angles})
 
     def getState(self):
-        state = np.array(self.state.getTrack())
+        #state = np.array(self.state.getTrack())
+        state = np.array(self.state.getTrack() + [self.state.getSpeedX()])
         assert state.shape == (self.state_size,)
         return state
 
@@ -87,6 +87,18 @@ class Driver(object):
         if self.show_sensors:
             self.stats.update(self.state)
 
+        # by default predict all controls by model
+        state = self.getState()
+        steer, accel, brake = self.model.predict(state)
+        self.control.setSteer(max(-1, min(1, steer)))
+        self.control.setAccel(max(0, min(1, accel)))
+        #self.control.setBrake(max(0, min(1, brake)))
+
+        # if not out of track turn the wheel according to model
+        terminal = self.getTerminal()
+        if terminal:
+            self.terminal_counter = self.max_terminal_steps
+
         events = self.wheel.getEvents()
         for event in events:
             if self.wheel.isButtonDown(event, 0) or self.wheel.isButtonDown(event, 8):
@@ -97,34 +109,29 @@ class Driver(object):
                 gear = self.state.getGear()
                 gear = min(6, gear + 1)
                 self.control.setGear(gear)
+            elif self.wheel.isButtonDown(event, 2):
+                self.terminal_counter = self.max_terminal_steps
+            elif self.wheel.isButtonDown(event, 3):
+                self.terminal_counter = 0
 
-        # by default predict all controls by model
-        state = self.getState()
-        steer, accel, brake = self.model.predict(state)
-        self.control.setSteer(max(-1, min(1, steer)))
-        self.control.setAccel(max(0, min(1, accel)))
-        #self.control.setBrake(max(0, min(1, brake)))
-
-        # if not out of track turn the wheel according to model
-        terminal = self.getTerminal()
-        if not terminal:
+        if self.terminal_counter == 0:
             self.gear()
 
         # replace random exploration with user assistance
         epsilon = self.getEpsilon()
         print "epsilon: ", epsilon, "\treplay: ", self.model.count
-        if terminal or (self.enable_exploration and random.random() < epsilon):
+        if self.terminal_counter > 0 or (self.enable_exploration and random.random() < epsilon):
             self.control.setSteer(self.wheel.getWheel())
             self.control.setAccel(self.wheel.getAccel())
             self.control.setBrake(self.wheel.getBrake())
             if self.max_speed > 0 and self.state.getSpeedX() > self.max_speed:
                 self.control.setAccel(0)
-            if self.enable_training and not terminal:
+            if self.enable_training and self.terminal_counter == 0:
                 action = (self.control.getSteer(), self.control.getAccel(), self.control.getBrake())
                 self.model.add(state, action)
                 self.model.train()
                 #self.plot.update()
-            if terminal:
+            if self.terminal_counter > 0:
                 self.wheel.resetForce()
         else:
             steer = self.control.getSteer()
@@ -132,6 +139,11 @@ class Driver(object):
             wheel = self.wheel.getWheel()
             #print "steer:", steer, "wheel:", wheel
             self.wheel.generateForce(steer - wheel)
+
+
+        if self.terminal_counter > 0:
+            print "MANUAL CONTROL"
+            self.terminal_counter -= 1
 
         self.total_train_steps += 1
 
@@ -169,3 +181,18 @@ class Driver(object):
     def onRestart(self):
         self.episode += 1
         print "Episode", self.episode
+        
+    def reset(self):
+        self.wheel.resetForce()
+        self.terminal_counter = 0
+    
+        self.enable_training = True
+        self.total_train_steps = 0
+        self.model.reset()
+        
+        self.episode = 0
+        self.onRestart()
+
+    def test_mode(self):
+        self.total_train_steps = self.exploration_decay_steps
+        self.enable_training = False

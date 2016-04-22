@@ -8,13 +8,9 @@ class LinearModel:
     self.size = size
     self.state_size = state_size
     self.action_size = action_size
-    self.states = np.zeros((self.size, self.state_size))
-    self.actions = np.zeros((self.size, self.action_size))
-    self.coeff = np.zeros((self.state_size + 1, self.action_size))
-    self.count = 0
-    self.current = 0
-
     logger.info("Replay memory size: %d" % self.size)
+
+    self.reset()
 
   def add(self, state, action):
     assert len(state) == self.state_size
@@ -43,6 +39,13 @@ class LinearModel:
   
   def save(self, filename):
     np.save(filename, self.coeff)
+
+  def reset(self):
+    self.states = np.zeros((self.size, self.state_size))
+    self.actions = np.zeros((self.size, self.action_size))
+    self.coeff = np.zeros((self.state_size + 1, self.action_size))
+    self.count = 0
+    self.current = 0
 
 if __name__ == "__main__":
     model = LinearModel(10, 1, 1)
