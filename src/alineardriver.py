@@ -37,8 +37,9 @@ class Driver(object):
 
         from wheel import Wheel
         self.wheel = Wheel(args.joystick_nr, args.autocenter, args.gain, args.min_level, args.max_level, args.min_force)
-        self.max_speed = args.max_speed
-        self.max_terminal_steps = args.max_terminal_steps
+
+        self.steer_lock = 0.785398
+        self.max_speed = 100
         
         #from plotlinear import PlotLinear
         #self.plot = PlotLinear(self.model, ['Speed', 'Angle', 'TrackPos'], ['Steer', 'Accel', 'Brake'])
@@ -92,25 +93,15 @@ class Driver(object):
 
         # if not out of track turn the wheel according to model
         terminal = self.getTerminal()
-        if terminal:
-            self.terminal_counter = self.max_terminal_steps
 
         events = self.wheel.getEvents()
         for event in events:
             if self.wheel.isButtonDown(event, 0) or self.wheel.isButtonDown(event, 8):
-                gear = self.state.getGear()
-                gear = max(-1, gear - 1)
-                self.control.setGear(gear)
+                self.control.setGear(-1)
             elif self.wheel.isButtonDown(event, 1) or self.wheel.isButtonDown(event, 9):
-                gear = self.state.getGear()
-                gear = min(6, gear + 1)
-                self.control.setGear(gear)
-            elif self.wheel.isButtonDown(event, 2):
-                self.terminal_counter = self.max_terminal_steps
-            elif self.wheel.isButtonDown(event, 3):
-                self.terminal_counter = 0
+                self.control.setGear(1)
 
-        if self.terminal_counter == 0:
+        if self.control.getGear() >= 0:
             self.gear()
 
         # replace random exploration with user assistance
@@ -118,37 +109,57 @@ class Driver(object):
         # show sensors
         if self.show_sensors:
             self.state.botcontrol = 1 - epsilon
-            self.state.mancontrol = (self.terminal_counter > 0)
+            self.state.mancontrol = (self.control.getGear() == -1)
             self.stats.update(self.state)
         print "epsilon: ", epsilon, "\treplay: ", self.model.count
-        if self.terminal_counter > 0 or (self.enable_exploration and random.random() < epsilon):
+        if (self.enable_training and terminal) or self.control.getGear() == -1 or (self.enable_exploration and random.random() < epsilon):
+            if terminal or self.control.getGear() == -1:
+                self.wheel.resetForce()
             self.control.setSteer(self.wheel.getWheel())
             self.control.setAccel(self.wheel.getAccel())
             self.control.setBrake(self.wheel.getBrake())
-            if self.max_speed > 0 and self.state.getSpeedX() > self.max_speed:
-                self.control.setAccel(0)
-            if self.enable_training and self.terminal_counter == 0:
+            if self.enable_training and not terminal and self.control.getGear() != -1:
                 action = (self.control.getSteer(), self.control.getAccel(), self.control.getBrake())
                 self.model.add(state, action)
                 self.model.train()
                 #self.plot.update()
-            if self.terminal_counter > 0:
-                self.wheel.resetForce()
         else:
-            steer = self.control.getSteer()
-            assert -1 <= steer <= 1
-            wheel = self.wheel.getWheel()
-            #print "steer:", steer, "wheel:", wheel
-            self.wheel.generateForce(steer - wheel)
-
-
-        if self.terminal_counter > 0:
-            print "MANUAL CONTROL"
-            self.terminal_counter -= 1
+            if terminal:
+                self.steer()
+                self.speed()
+            else:
+                steer = self.control.getSteer()
+                assert -1 <= steer <= 1
+                wheel = self.wheel.getWheel()
+                #print "steer:", steer, "wheel:", wheel
+                self.wheel.generateForce(steer - wheel)
 
         self.total_train_steps += 1
 
         return self.control.toMsg()
+
+    def steer(self):
+        angle = self.state.angle
+        dist = self.state.trackPos
+        
+        self.control.setSteer((angle - dist*0.5)/self.steer_lock)
+    
+    def speed(self):
+        speed = self.state.getSpeedX()
+        accel = self.control.getAccel()
+        
+        if speed < self.max_speed:
+            print "speed < max_speed", speed, self.max_speed
+            accel += 0.1
+            if accel > 1:
+                accel = 1.0
+        else:
+            print "speed >= max_speed", speed, self.max_speed
+            accel -= 0.1
+            if accel < 0:
+                accel = 0.0
+        
+        self.control.setAccel(accel)
 
     def gear(self):
         '''
@@ -185,7 +196,6 @@ class Driver(object):
         
     def reset(self):
         self.wheel.resetForce()
-        self.terminal_counter = 0
     
         self.enable_training = True
         self.total_train_steps = 0

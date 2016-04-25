@@ -88,7 +88,7 @@ comarg.add_argument("--verbose", type=str2bool, default=False, help="Enable debu
 
 
 # name of the driver to use 
-parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac', 'alinear', 'record', 'player'], default='linear')
+parser.add_argument('--driver', choices=['orig', 'key', 'wheel', 'ff', 'random', 'dqn', 'linear', 'demo', 'ac', 'alinear', 'record', 'player'], default='alinear')
 arguments = parser.parse_args()
 
 # Print summary
