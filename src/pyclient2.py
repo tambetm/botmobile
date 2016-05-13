@@ -32,7 +32,7 @@ antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exp
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
 antarg.add_argument("--exploration_decay_steps", type=int, default=10000, help="How many steps to decay the exploration rate.")
 antarg.add_argument("--skip", type=int, default=0, help="Use the same action for this number of consecutive states.")
-antarg.add_argument("--repeat_train", type=int, default=5, help="Number of Q-updates to do during each timestep.")
+antarg.add_argument("--repeat_train", type=int, default=1, help="Number of Q-updates to do during each timestep.")
 
 antarg.add_argument("--show_sensors", type=str2bool, default=False, help="Show sensors.")
 antarg.add_argument("--update_sensors_interval", type=int, default=1, help="Update sensor values after every x steps.")
@@ -42,7 +42,7 @@ antarg.add_argument("--update_qvalues_interval", type=int, default=1, help="Upda
 antarg.add_argument("--save_csv", help="Save results in CSV file.")
 
 memarg = parser.add_argument_group('Replay memory')
-memarg.add_argument("--replay_size", type=int, default=100000, help="Maximum size of replay memory.")
+memarg.add_argument("--replay_size", type=int, default=1000000, help="Maximum size of replay memory.")
 memarg.add_argument("--load_replay", help="Load replay memory from this file.")
 memarg.add_argument("--save_replay", help="Save replay memory to this file at the end of training.")
 
