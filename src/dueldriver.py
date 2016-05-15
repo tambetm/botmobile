@@ -178,7 +178,7 @@ class Driver(object):
             self.mem.add(self.prev_state, self.prev_action, reward, state, terminal)
 
         # if terminal state (out of track), then restart game
-        if terminal:
+        if self.enable_training and terminal:
             #print "terminal state, restarting"
             self.control.setMeta(1)
             return self.control.toMsg()
@@ -311,8 +311,8 @@ class Driver(object):
             self.control.setBrake(-accel)
     
     def onShutDown(self):
-        if self.save_weights_prefix:
-            self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode - 1) + ".pkl")
+        #if self.save_weights_prefix:
+        #    self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode - 1) + ".pkl")
         
         if self.save_replay:
             self.mem.save(self.save_replay)
@@ -332,9 +332,9 @@ class Driver(object):
             dist = self.state.getDistRaced()
             self.distances.append(dist)
             epsilon = self.getEpsilon()
-            avgloss = self.loss_sum / self.loss_steps
+            avgloss = self.loss_sum / max(self.loss_steps, 1)
             self.loss_sum = self.loss_steps = 0
-            avgmaxQ = self.maxQ_sum / self.maxQ_steps
+            avgmaxQ = self.maxQ_sum / max(self.maxQ_steps, 1)
             self.maxQ_sum = self.maxQ_steps = 0
             print "Episode:", self.episode, "\tDistance:", dist, "\tMax:", max(self.distances), "\tMedian10:", np.median(self.distances[-10:]), \
                 "\tEpsilon:", epsilon, "\tReplay memory:", self.mem.count, "\tAverage loss:", avgloss, "\tAverage maxQ", avgmaxQ 
