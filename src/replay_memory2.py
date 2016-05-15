@@ -53,6 +53,9 @@ class ReplayMemory:
     #assert not np.any(rewards < 0), "yay, negative reward sampled: %s" % str(rewards)
     return prestates, actions, rewards, poststates, terminals
 
+  def getFullbatch(self):
+    return self.prestates[:self.count], self.actions[:self.count], self.rewards[:self.count], self.poststates[:self.count], self.terminals[:self.count]
+
   def save(self, filename):
     with open(filename, 'wb') as f:
       pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
