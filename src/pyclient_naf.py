@@ -29,9 +29,6 @@ antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enab
 antarg.add_argument("--enable_exploration", type=str2bool, default=True, help="Enable exploration, by default True.")
 antarg.add_argument("--learn", choices=['steer', 'speed', 'both'], default='steer', help="Learn steering, acceleration or both.")
 
-antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
-antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
-antarg.add_argument("--exploration_decay_steps", type=int, default=10000, help="How many steps to decay the exploration rate.")
 antarg.add_argument("--skip", type=int, default=0, help="Use the same action for this number of consecutive states.")
 antarg.add_argument("--repeat_train", type=int, default=1, help="Number of Q-updates to do during each timestep.")
 
@@ -50,15 +47,20 @@ memarg.add_argument("--save_replay", help="Save replay memory to this file at th
 netarg = parser.add_argument_group('Deep Q-learning network')
 netarg.add_argument("--learning_rate", type=float, default=0.0001, help="Learning rate.")
 netarg.add_argument("--discount_rate", type=float, default=0.99, help="Discount rate for future rewards.")
-netarg.add_argument("--target_rate", type=float, default=1.0, help="Copy main network to target network using this averaging rate.")
+netarg.add_argument("--target_rate", type=float, default=1, help="Copy main network to target network using this averaging rate.")
 netarg.add_argument("--batch_size", type=int, default=100, help="Batch size for neural network.")
 netarg.add_argument('--optimizer', choices=['rmsprop', 'adam', 'adadelta'], default='adam', help='Network optimization algorithm.')
+netarg.add_argument('--max_norm', type=int)
+netarg.add_argument('--unit_norm', action='store_true', default=False)
+netarg.add_argument('--l2_reg', type=float)
+netarg.add_argument('--l1_reg', type=float)
 
 netarg.add_argument("--hidden_nodes", type=int, default=50, help="Number of nodes in hidden layer.")
 netarg.add_argument("--hidden_layers", type=int, default=2, help="Number of hidden layers.")
-netarg.add_argument('--advantage', choices=['naive', 'max', 'avg', 'none'], default='none')
+netarg.add_argument('--noise', choices=['fixed', 'covariance'], default='fixed')
+netarg.add_argument('--noise_scale', type=float, default=0.01)
 netarg.add_argument('--activation', choices=['tanh', 'relu'], default='tanh')
-netarg.add_argument("--batch_norm", type=str2bool, default=False, help="Use batch normalization.")
+netarg.add_argument("--batch_norm", type=str2bool, default=True, help="Use batch normalization.")
 
 netarg.add_argument("--load_weights", help="Load network from file.")
 netarg.add_argument("--save_weights_prefix", default="test", help="After each epoch save network to given file. Epoch and extension will be appended.")
@@ -80,7 +82,7 @@ print 'Track:', arguments.track
 print 'Stage:', arguments.stage
 print '*********************************************'
 
-from dueldriver import Driver
+from nafdriver import Driver
 driver = Driver(arguments)
 
 try:
