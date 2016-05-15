@@ -85,13 +85,15 @@ class DeepQNetwork:
           qpre[i, k + actions[i, j]] = rewards[i] + self.discount_rate * np.amax(qpost[i, k:k + self.action_sizes[j]])
         k += self.action_sizes[j]
       assert k == self.num_actions
-    cost = self.model.train_on_batch(prestates, qpre)
+    loss = self.model.train_on_batch(prestates, qpre)
 
     weights = self.model.get_weights()
     target_weights = self.target_model.get_weights()
     for i in xrange(len(weights)):
       target_weights[i] = self.target_rate * weights[i] + (1 - self.target_rate) * target_weights[i]
     self.target_model.set_weights(target_weights)
+
+    return loss
 
   def predict(self, states):
     # calculate Q-values for the states

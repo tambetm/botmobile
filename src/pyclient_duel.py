@@ -27,6 +27,7 @@ antarg = parser.add_argument_group('Agent')
 
 antarg.add_argument("--enable_training", type=str2bool, default=True, help="Enable training, by default True.")
 antarg.add_argument("--enable_exploration", type=str2bool, default=True, help="Enable exploration, by default True.")
+antarg.add_argument("--learn", choices=['steer', 'speed', 'both'], default='both', help="Learn steering, acceleration or both.")
 
 antarg.add_argument("--exploration_rate_start", type=float, default=1, help="Exploration rate at the beginning of decay.")
 antarg.add_argument("--exploration_rate_end", type=float, default=0.1, help="Exploration rate at the end of decay.")
@@ -47,8 +48,9 @@ memarg.add_argument("--load_replay", help="Load replay memory from this file.")
 memarg.add_argument("--save_replay", help="Save replay memory to this file at the end of training.")
 
 netarg = parser.add_argument_group('Deep Q-learning network')
-netarg.add_argument("--learning_rate", type=float, default=0.01, help="Learning rate.")
+netarg.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate.")
 netarg.add_argument("--discount_rate", type=float, default=0.99, help="Discount rate for future rewards.")
+netarg.add_argument("--target_rate", type=float, default=0.01, help="Copy main network to target network using this averaging rate.")
 netarg.add_argument("--batch_size", type=int, default=100, help="Batch size for neural network.")
 netarg.add_argument('--optimizer', choices=['rmsprop', 'adam', 'adadelta'], default='adam', help='Network optimization algorithm.')
 
@@ -58,7 +60,6 @@ netarg.add_argument('--advantage', choices=['naive', 'max', 'avg', 'none'], defa
 netarg.add_argument('--activation', choices=['tanh', 'relu'], default='tanh')
 netarg.add_argument("--batch_norm", type=str2bool, default=False, help="Use batch normalization.")
 
-netarg.add_argument("--target_rate", type=float, default=1, help="Copy main network to target network using this averaging rate.")
 netarg.add_argument("--load_weights", help="Load network from file.")
 netarg.add_argument("--save_weights_prefix", default="test", help="After each epoch save network to given file. Epoch and extension will be appended.")
 netarg.add_argument("--save_interval", type=int, default=100, help="Save weights after this many episodes.")
@@ -79,7 +80,7 @@ print 'Track:', arguments.track
 print 'Stage:', arguments.stage
 print '*********************************************'
 
-from dqndriver2 import Driver
+from dueldriver import Driver
 driver = Driver(arguments)
 
 try:

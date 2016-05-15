@@ -12,7 +12,7 @@ import random
 import csv
 
 from replay_memory2 import ReplayMemory
-from deepqnetwork2 import DeepQNetwork
+from deepqnetwork_duel import DeepQNetwork
 
 class Driver(object):
     '''
@@ -32,15 +32,24 @@ class Driver(object):
         self.control = carControl.CarControl()
 
         self.steers = [-1.0, -0.8, -0.6, -0.5, -0.4, -0.3, -0.2, -0.15, -0.1, -0.05, 0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]
-        self.speeds = [-1.0, -0.5, 0.0, 0.5, 1.0]
+        #self.speeds = [-1.0, -0.5, 0.0, 0.5, 1.0]
+        self.speeds = [0.0, 0.5, 1.0]
         self.num_inputs = 20
-        self.num_actions = 2
         self.num_steers = len(self.steers)
         self.num_speeds = len(self.speeds)
         
-        self.net = DeepQNetwork(self.num_inputs, (self.num_steers, self.num_speeds), args)
-        #self.net = DeepQNetwork(self.num_inputs, (self.num_speeds,), args)
-        #self.net = DeepQNetwork(self.num_inputs, (self.num_steers,), args)
+        self.learn = args.learn
+        if self.learn == 'both':
+          self.net = DeepQNetwork(self.num_inputs, (self.num_steers, self.num_speeds), args)
+          self.num_actions = 2
+        elif self.learn == 'steer':
+          self.net = DeepQNetwork(self.num_inputs, (self.num_steers,), args)
+          self.num_actions = 1
+        elif self.learn == 'speed':
+          self.net = DeepQNetwork(self.num_inputs, (self.num_speeds,), args)
+          self.num_actions = 1
+        else:
+          assert False
         self.mem = ReplayMemory(args.replay_size, self.num_inputs, self.num_actions)
         self.minibatch_size = args.batch_size
 
@@ -58,7 +67,7 @@ class Driver(object):
         if self.save_csv:
           self.csv_file = open(args.save_csv, "wb")
           self.csv_writer = csv.writer(self.csv_file)
-          self.csv_writer.writerow(['episode', 'distFormStart', 'distRaced', 'curLapTime', 'lastLapTime', 'racePos', 'epsilon', 'replay_memory', 'train_steps'])
+          self.csv_writer.writerow(['episode', 'distFormStart', 'distRaced', 'curLapTime', 'lastLapTime', 'racePos', 'epsilon', 'replay_memory', 'train_steps', 'avgmaxQ', 'avgloss'])
 
         self.total_train_steps = 0
         self.exploration_decay_steps = args.exploration_decay_steps
@@ -72,6 +81,9 @@ class Driver(object):
 
         self.steer_lock = 0.785398
         self.max_speed = 100
+
+        self.loss_sum = self.loss_steps = 0
+        self.maxQ_sum = self.maxQ_steps = 0
 
         self.episode = 0
         self.distances = []
@@ -146,7 +158,8 @@ class Driver(object):
         if self.enable_training and self.mem.count > 0:
           for i in xrange(self.repeat_train):
             minibatch = self.mem.getMinibatch(self.minibatch_size)
-            self.net.train(minibatch)
+            self.loss_sum += self.net.train(minibatch)
+            self.loss_steps += 1
 
         # skip frame and use the same action as previously
         if self.skip > 0:
@@ -176,30 +189,38 @@ class Driver(object):
         minibatch = state + np.zeros((self.minibatch_size, 1))
         Q = self.net.predict(minibatch)
         #print "Q:", Q[0]
-        #import pdb
-        #pdb.set_trace()
         if self.show_qvalues:
             self.plotq.update(Q[0])
+        self.maxQ_sum += np.max(Q[0])
+        self.maxQ_steps += 1
 
         # choose actions for wheel and speed
         epsilon = self.getEpsilon()
         #print "epsilon:", epsilon
-        if self.enable_exploration and random.random() < epsilon:
-            #print "random steer"
-            steer = random.randrange(self.num_steers)
+        if self.learn == 'steer' or self.learn == 'both':
+          if self.enable_exploration and random.random() < epsilon:
+              #print "random steer"
+              steer = random.randrange(self.num_steers)
+          else:
+              #print "steer Q: ", Q[0,:self.num_steers]
+              steer = np.argmax(Q[0, :self.num_steers])
+              #steer = np.argmax(Q[0])
+          self.setSteerAction(steer)
         else:
-            #print "steer Q: ", Q[0,:self.num_steers]
-            steer = np.argmax(Q[0, :self.num_steers])
-            #steer = np.argmax(Q[0])
+          self.steer()
 
-        if self.enable_exploration and random.random() < epsilon:
-            #speed = random.randrange(self.num_speeds)
-            # don't do braking
-            speed = random.randint(2, self.num_speeds-1)
+        if self.learn == 'speed' or self.learn == 'both':
+          if self.enable_exploration and random.random() < epsilon:
+              #speed = random.randrange(self.num_speeds)
+              # don't do braking
+              speed = random.randint(2, self.num_speeds-1)
+          else:
+              #print "speed Q:", Q[0,-self.num_speeds:]
+              speed = np.argmax(Q[0, -self.num_speeds:])
+              #speed = np.argmax(Q[0])
+          self.setSpeedAction(speed)
         else:
-            #print "speed Q:", Q[0,-self.num_speeds:]
-            speed = np.argmax(Q[0, -self.num_speeds:])
-            #speed = np.argmax(Q[0])
+          self.speed()
         
         #print "steer:", steer, "speed:", speed
         #print "speed:", speed
@@ -207,17 +228,18 @@ class Driver(object):
 
         # gears are always automatic
         gear = self.gear()
-
-        # set actions
-        self.setSteerAction(steer)
-        #self.steer()
         self.setGearAction(gear)
-        self.setSpeedAction(speed)
-        #self.speed()
 
         # remember state and actions 
         self.prev_state = state
-        self.prev_action = np.array([steer, speed])
+        if self.learn == 'both':
+          self.prev_action = np.array([steer, speed])
+        elif self.learn == 'steer':
+          self.prev_action = np.array([steer])
+        elif self.learn == 'speed':
+          self.prev_action = np.array([speed])
+        else:
+          assert False
 
         self.total_train_steps += 1
         #print "total_train_steps:", self.total_train_steps
@@ -290,7 +312,7 @@ class Driver(object):
     
     def onShutDown(self):
         if self.save_weights_prefix:
-            self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
+            self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode - 1) + ".pkl")
         
         if self.save_replay:
             self.mem.save(self.save_replay)
@@ -310,8 +332,12 @@ class Driver(object):
             dist = self.state.getDistRaced()
             self.distances.append(dist)
             epsilon = self.getEpsilon()
+            avgloss = self.loss_sum / self.loss_steps
+            self.loss_sum = self.loss_steps = 0
+            avgmaxQ = self.maxQ_sum / self.maxQ_steps
+            self.maxQ_sum = self.maxQ_steps = 0
             print "Episode:", self.episode, "\tDistance:", dist, "\tMax:", max(self.distances), "\tMedian10:", np.median(self.distances[-10:]), \
-                "\tEpsilon:", epsilon, "\tReplay memory:", self.mem.count
+                "\tEpsilon:", epsilon, "\tReplay memory:", self.mem.count, "\tAverage loss:", avgloss, "\tAverage maxQ", avgmaxQ 
 
             if self.save_weights_prefix and self.save_interval > 0 and self.episode % self.save_interval == 0:
                 self.net.save_weights(self.save_weights_prefix + "_" + str(self.episode) + ".pkl")
@@ -327,7 +353,9 @@ class Driver(object):
                     self.state.getRacePos(), 
                     epsilon, 
                     self.mem.count,
-                    self.total_train_steps
+                    self.total_train_steps,
+                    avgmaxQ,
+                    avgloss
                 ])
                 self.csv_file.flush()
 
