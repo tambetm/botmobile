@@ -65,7 +65,7 @@ class Driver(object):
         self.enable_exploration = args.enable_exploration
         self.save_csv = args.save_csv
         if self.save_csv:
-          self.csv_file = open(args.save_csv, "wb")
+          self.csv_file = open(args.save_csv + '.csv', "wb")
           self.csv_writer = csv.writer(self.csv_file)
           self.csv_writer.writerow(['episode', 'distFormStart', 'distRaced', 'curLapTime', 'lastLapTime', 'racePos', 'epsilon', 'replay_memory', 'train_steps', 'avgmaxQ', 'avgloss'])
 
