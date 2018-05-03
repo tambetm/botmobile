@@ -29,7 +29,7 @@ antarg.add_argument("--device", choices=['wheel', 'keyboard'], default="wheel", 
 antarg.add_argument("--mode", choices=['override', 'ff'], default="override", help="Whether to use manual control override or force feedback to showcase moves.")
 
 antarg.add_argument("--joystick_nr", type=int, default=0, help="Joystick number in case of many.")
-antarg.add_argument("--autocenter", type=int, default=1, help="Autocenter for force feedback wheels.")
+antarg.add_argument("--autocenter", type=int, default=20, help="Autocenter for force feedback wheels.")
 antarg.add_argument("--gain", type=int, default=100, help="Gain for force feedback wheels.")
 antarg.add_argument("--min_force", type=float, default=0.005, help="Only apply force if stronger than this.")
 antarg.add_argument("--min_level", type=int, default=0x1000, help="Minimal force level to apply.")

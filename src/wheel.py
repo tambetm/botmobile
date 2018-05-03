@@ -91,13 +91,13 @@ class Wheel:
 
         if force > self.min_force:
             force = min(1, force)
-            dir = -1
-            print "left", force
+            dir = 1
+            print "right", force
         elif force < -self.min_force:
             force = -force
             force = min(1, force)
-            dir = 1
-            print "right", force
+            dir = -1
+            print "left", force
         else:
             dir = 0
             print "center"
